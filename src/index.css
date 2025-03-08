@@ -112,11 +112,11 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-elegant;
+    @apply bg-white/90 backdrop-blur-xl border border-white/20 shadow-elegant;
   }
 
   .glass-card {
-    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-white/30 dark:border-white/5 rounded-xl shadow-card transition-all duration-300 hover:shadow-card-hover;
+    @apply bg-white/80 backdrop-blur-lg border border-white/30 rounded-xl shadow-card transition-all duration-300 hover:shadow-card-hover;
   }
 
   .gradient-text {
@@ -199,12 +199,12 @@
   
   /* Card design */
   .elegant-card {
-    @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-card transition-all duration-300 hover:shadow-card-hover;
+    @apply bg-white rounded-xl border border-gray-100 shadow-card transition-all duration-300 hover:shadow-card-hover;
   }
   
   /* Sidebar enhancements */
   .sidebar-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-primary-soft dark:hover:bg-primary-soft hover:text-primary dark:hover:text-primary transition-all duration-200;
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-primary-soft hover:text-primary transition-all duration-200;
   }
   
   .sidebar-item-active {
@@ -213,7 +213,7 @@
   
   /* Form elements */
   .elegant-input {
-    @apply border border-gray-200 dark:border-gray-800 rounded-lg p-3 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-700;
+    @apply border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 hover:border-gray-300;
   }
   
   /* Table styles */
@@ -226,15 +226,15 @@
   }
   
   .elegant-table th {
-    @apply bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium px-4 py-3 text-left border-b border-gray-200 dark:border-gray-700;
+    @apply bg-gray-50 text-gray-600 font-medium px-4 py-3 text-left border-b border-gray-200;
   }
   
   .elegant-table td {
-    @apply px-4 py-3 border-b border-gray-100 dark:border-gray-700;
+    @apply px-4 py-3 border-b border-gray-100;
   }
   
   .elegant-table tr:hover {
-    @apply bg-gray-50/50 dark:bg-gray-800/50 transition-colors duration-150;
+    @apply bg-gray-50/50 transition-colors duration-150;
   }
   
   /* Fixed bottom navigation for mobile */

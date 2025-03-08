@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './MinesGame.css';
 
+// URL path: /casino/games/mines
 const MinesGame = () => {
   const [grid, setGrid] = useState(generateGrid(5, 5, 5));
   const [gameOver, setGameOver] = useState(false);
@@ -54,4 +55,4 @@ const MinesGame = () => {
   );
 };
 
-export default MinesGame; 
+export default MinesGame;
