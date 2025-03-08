@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import "@/styles/plinko.css";
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from 'sonner';
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -10,71 +12,86 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-// Import the CSS file for Plinko styling
-import "@/styles/plinko.css";
+import { Slider } from "@/components/ui/slider";
 
-// Adjust constants for configurable rows
-const CANVAS_WIDTH = 600;
-const CANVAS_HEIGHT = 600; // Make it square
-const BASE_CANVAS_HEIGHT = 600;
-// Add a constant for bottom padding to ensure consistent end position
-const BOTTOM_PADDING = 20; // Reduce bottom padding
-const PIN_RADIUS = 4;
-const BALL_RADIUS = 6;
-const PIN_SPACING = 40; // Define PIN_SPACING with an appropriate value
+// Game constants
+const CANVAS_WIDTH = 568; // 600 - 2rem (32px) padding
+const CANVAS_HEIGHT = 568; // Made square
 const MIN_ROWS = 8;
 const MAX_ROWS = 16;
+const PIN_RADIUS = 4;
+const BALL_RADIUS = 6;
+const GRAVITY = 0.15;
+const BOUNCE = 0.6;
+const FRICTION = 0.99;
+const BUCKET_HEIGHT = 40; // Add new constant for bucket detection
+const PIN_SPACING = CANVAS_WIDTH / 12; // Dynamic spacing based on canvas width
+const TOP_PADDING = 40; // Reduced from original
+// Fixed row configuration
+const ROWS = 8;
+const PINS_PER_ROW = Array.from({ length: ROWS }, (_, i) => i + 3); // 3 pins at top, 10 at bottom
 
-// Define the exact number of dots per row (starting from row 0)
-const DOTS_PER_ROW = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const VERTICAL_SPACING = (CANVAS_HEIGHT - 60) / (ROWS - 1);
 
-// Multiplier configuration based on rows and risk level
-interface MultiplierConfig {
-  low: Record<number, number[]>;
-  medium: Record<number, number[]>;
-  high: Record<number, number[]>;
-}
+// Add risk level type and multiplier configurations
+type RiskLevel = 'low' | 'medium' | 'high';
 
-// Helper function to calculate multiplier count from rows
-const getMultiplierCount = (rows: number): number => {
-  // For 8 rows -> 7 multipliers, 18 rows -> 17 multipliers
-  return rows - 1;
-};
-
-// Base multiplier configurations - you can modify these values
-const BASE_MULTIPLIERS: MultiplierConfig = {
+const MULTIPLIER_VALUES: Record<RiskLevel, Record<number, number[]>> = {
   low: {
-    // Define some specific configurations for certain row counts
-    8: [1.2, 1.1, 1.0, 0.9, 1.0, 1.1, 1.2],
-    9: [1.2, 1.1, 1.0, 0.9, 1.0, 1.1, 1.2],
-    10: [1.4, 1.2, 1.1, 1.0, 0.9, 1.0, 1.1, 1.2, 1.4],
-    12: [1.5, 1.3, 1.2, 1.1, 1.0, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5],
-    14: [1.8, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.8],
-    18: [2.0, 1.7, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 2.0]
+    8: [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
+    9: [5.6, 1.6, 1, 0.7, 0.7, 1, 1.6, 2, 5.6],
+    10: [8.9, 3, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 3, 8.9],
+    11: [8.4, 3, 1.9, 1.3, 1, 0.7, 0.7, 1.3, 1.9, 3, 8.4],
+    12: [10, 3, 1.6, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 1.6, 3, 10],
+    13: [8.1, 4, 3, 1.9, 1.2, 0.9, 0.7, 0.7, 0.9, 1.2, 1.9, 3, 4, 8.1],
+    14: [7.1, 4, 1.9, 1.4, 1.3, 1.1, 1, 0.5, 1, 1.1, 1.3, 1.4, 1.9, 4, 7.1],
+    15: [15, 8, 3, 2, 1.5, 1.1, 1, 0.7, 0.7, 1, 1.1, 1.5, 2, 3, 8, 15],
+    16: [16, 9, 2, 1.4, 1.4, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.4, 1.4, 2, 9, 16]
   },
   medium: {
-    8: [2.6, 1.8, 1.3, 1.0, 1.3, 1.8, 2.6],
-    10: [3.0, 2.1, 1.5, 1.3, 1.0, 1.3, 1.5, 2.1, 3.0],
-    12: [3.5, 2.5, 1.8, 1.4, 1.2, 1.0, 1.2, 1.4, 1.8, 2.5, 3.5],
-    14: [4.0, 2.8, 2.1, 1.6, 1.3, 1.1, 1.0, 1.1, 1.3, 1.6, 2.1, 2.8, 4.0],
-    18: [5.0, 3.5, 2.6, 2.0, 1.7, 1.4, 1.2, 1.1, 1.0, 1.1, 1.2, 1.4, 1.7, 2.0, 2.6, 3.5, 5.0]
+    8: [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13],
+    9: [18, 4, 1.7, 0.9, 0.5, 0.5, 0.9, 1.7, 4, 18],
+    10: [22, 5, 2, 1.4, 0.6, 0.4, 0.6, 1.4, 2, 5, 22],
+    11: [22, 6, 3, 1.8, 0.7, 0.5, 0.5, 0.7, 1.8, 3, 6, 24],
+    12: [33, 11, 4, 2, 1.1, 0.6, 0.3, 0.6, 1.1, 2, 4, 11, 33],
+    13: [43, 13, 6, 3, 1.3, 0.7, 0.4, 0.4, 0.7, 1.3, 3, 6, 13, 43],
+    14: [58, 15, 7, 4, 1.9, 1, 0.5, 0.2, 0.5, 1, 1.9, 4, 7, 15, 58],
+    15: [88, 18, 11, 5, 3, 1.3, 0.5, 0.3, 0.3, 0.5, 1.3, 3, 5, 11, 18, 88],
+    16: [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110]
   },
   high: {
-    8: [7.0, 3.0, 1.6, 0.7, 1.6, 3.0, 7.0],
-    10: [9.0, 4.0, 2.0, 1.3, 0.6, 1.3, 2.0, 4.0, 9.0],
-    12: [12.0, 5.0, 2.5, 1.7, 1.1, 0.5, 1.1, 1.7, 2.5, 5.0, 12.0],
-    14: [16.0, 7.0, 3.5, 2.0, 1.4, 0.8, 0.5, 0.8, 1.4, 2.0, 3.5, 7.0, 16.0],
-    18: [25.0, 12.0, 7.0, 4.0, 2.5, 1.8, 1.3, 0.9, 0.4, 0.9, 1.3, 1.8, 2.5, 4.0, 7.0, 12.0, 25.0]
+    8: [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29],
+    9: [43, 7, 2, 0.6, 0.2, 0.2, 0.6, 2, 7, 43],
+    10: [76, 10, 3, 0.9, 0.3, 0.2, 0.3, 0.9, 3, 10, 76],
+    11: [120, 14, 5.2, 1.4, 0.4, 0.2, 0.2, 0.4, 1.4, 5.2, 14, 120],
+    12: [170, 24, 8.1, 2, 0.7, 0.2, 0.2, 0.2, 0.7, 2, 8.1, 24, 170],
+    13: [260, 37, 11, 4, 1, 0.2, 0.2, 0.2, 0.2, 1, 4, 11, 37, 260],
+    14: [420, 56, 18, 5, 1.9, 0.3, 0.2, 0.2, 0.2, 0.3, 1.9, 5, 18, 56, 420],
+    15: [620, 83, 27, 8, 3, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2, 0.5, 3, 8, 27, 83, 620],
+    16: [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000]
   }
+};
+
+const generateMultipliers = (numRows: number, riskLevel: RiskLevel): number[] => {
+  // Ensure we're using the correct risk level multipliers
+  const riskMultipliers = MULTIPLIER_VALUES[riskLevel];
+  return riskMultipliers[numRows] || [];
+};
+
+// Update getMultipliers function to accept parameters
+const getMultipliers = (pinsRef: React.RefObject<Pin[]>, rowCount: number, currentRisk: RiskLevel): number[] => {
+  if (!pinsRef.current?.length) return [];
+  // Get the multipliers for the current risk level and row count
+  const multipliers = MULTIPLIER_VALUES[currentRisk][rowCount];
+  return multipliers || [];
 };
 
 interface Ball {
   x: number;
   y: number;
-  vy: number;
   vx: number;
-  id: string; // Add unique identifier for each ball
+  vy: number;
+  id: string;
 }
 
 interface Pin {
@@ -82,526 +99,198 @@ interface Pin {
   y: number;
 }
 
-type RiskLevel = 'low' | 'medium' | 'high';
-
-interface PlinkoConfig {
-  rows: number;
-  risk: RiskLevel;
-}
-
-// Generate multipliers based on row count and risk level
-const generateMultipliers = (rows: number, risk: RiskLevel): number[] => {
-  const multiplierCount = getMultiplierCount(rows);
-  
-  // Check if we have a predefined configuration for this row count
-  if (BASE_MULTIPLIERS[risk][rows]) {
-    return BASE_MULTIPLIERS[risk][rows];
+const riskLevelToSlider = (risk: RiskLevel): number => {
+  switch (risk) {
+    case 'low': return 0;
+    case 'medium': return 50;
+    case 'high': return 100;
   }
-  
-  // If not, interpolate between the closest defined configurations
-  const definedRows = Object.keys(BASE_MULTIPLIERS[risk])
-    .map(Number)
-    .sort((a, b) => a - b);
-  
-  let lowerRow = definedRows.filter(r => r <= rows).pop() || definedRows[0];
-  let upperRow = definedRows.filter(r => r >= rows).shift() || definedRows[definedRows.length - 1];
-  
-  if (lowerRow === upperRow) {
-    // If we only found one match, we'll need to scale it
-    const baseMultipliers = BASE_MULTIPLIERS[risk][lowerRow];
-    const targetLength = multiplierCount;
-    
-    if (baseMultipliers.length === targetLength) {
-      return baseMultipliers;
-    }
-    
-    // Scale the multipliers to the target length
-    return scaleMultipliers(baseMultipliers, targetLength);
-  }
-  
-  // Interpolate between lower and upper row configurations
-  const lowerMultipliers = BASE_MULTIPLIERS[risk][lowerRow];
-  const upperMultipliers = BASE_MULTIPLIERS[risk][upperRow];
-  
-  // First make both arrays the same length
-  const normalizedLower = scaleMultipliers(lowerMultipliers, multiplierCount);
-  const normalizedUpper = scaleMultipliers(upperMultipliers, multiplierCount);
-  
-  // Then interpolate between them
-  const factor = (rows - lowerRow) / (upperRow - lowerRow);
-  return normalizedLower.map((val, idx) => {
-    const interpolated = val + (normalizedUpper[idx] - val) * factor;
-    return Math.round(interpolated * 100) / 100; // Round to 2 decimal places
-  });
 };
 
-// Helper function to scale multipliers to a target length
-const scaleMultipliers = (multipliers: number[], targetLength: number): number[] => {
-  if (multipliers.length === targetLength) {
-    return multipliers;
-  }
-  
-  const result = new Array(targetLength).fill(0);
-  const center = Math.floor(targetLength / 2);
-  const sourceCenter = Math.floor(multipliers.length / 2);
-  
-  for (let i = 0; i < targetLength; i++) {
-    const distance = Math.abs(i - center) / center; // 0 at center, 1 at edges
-    const sourceIdx = Math.min(
-      multipliers.length - 1,
-      Math.round(sourceCenter + (i - center) * (multipliers.length / targetLength))
-    );
-    
-    // Apply some scaling based on row count
-    const scaleFactor = 1 + (targetLength - multipliers.length) * 0.03;
-    
-    // Scale edges more than center
-    const edgeBoost = 1 + distance * 0.2;
-    
-    result[i] = Math.round(multipliers[sourceIdx] * scaleFactor * edgeBoost * 100) / 100;
-  }
-  
-  return result;
-};
-
-// Dynamic multiplier row component that handles any number of multipliers
-const MultiplierRow = ({ multipliers }: { multipliers: number[] }) => {
-  return (
-    <div className="w-full grid plinko-multipliers" style={{ 
-      gridTemplateColumns: `repeat(${multipliers.length}, 1fr)`,
-      gap: '0px' // Remove gap between multipliers
-    }}>
-      {multipliers.map((multiplier, index) => (
-        <div
-          key={index}
-          className={cn(
-            "flex items-center justify-center h-10 multiplier-item",
-            index % 2 === 0 ? "bg-gray-800" : "bg-gray-900",
-            "text-sm md:text-base font-bold transition-all duration-300",
-            "plinko-bucket"
-          )}
-        >
-          <span className="multiplier-text">{multiplier}x</span>
-        </div>
-      ))}
-    </div>
-  );
+const sliderToRiskLevel = (value: number): RiskLevel => {
+  if (value <= 33) return 'low';
+  if (value <= 66) return 'medium';
+  return 'high';
 };
 
 export function Plinko() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [betAmount, setBetAmount] = useState("1");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [riskLevel, setRiskLevel] = useState<RiskLevel>('medium');
-  const animationFrameRef = useRef<number>();
-  const [activeBalls, setActiveBalls] = useState<Ball[]>([]); // Replace ballRef with state
-  const pinsRef = useRef<Pin[]>([]);
-  const animationLoopRef = useRef<boolean>(false);
-  const requestRef = useRef<number>();
-  const previousTimeRef = useRef<number>();
-  const animationRef = useRef<number | null>(null);
   const ballsRef = useRef<Ball[]>([]);
-  const processedBallIdsRef = useRef<Set<string>>(new Set()); // Track processed ball IDs
-  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
-  const [config, setConfig] = useState<PlinkoConfig>({
-    rows: 8,
-    risk: 'medium'
-  });
-  const [multipliers, setMultipliers] = useState<number[]>([]);
-  // Add ref to track canvas height
-  const canvasHeightRef = useRef<number>(BASE_CANVAS_HEIGHT);
-  // Add this new state to track wins for toast display
-  const [lastWinAmount, setLastWinAmount] = useState<{amount: number, multiplier: number} | null>(null);
-  // Add state to track multiplier hits history
-  const [multiplierHits, setMultiplierHits] = useState<{multiplier: number, amount: number}[]>([]);
+  const pinsRef = useRef<Pin[]>([]);
+  const animationRef = useRef<number | null>(null);
+  const [lastWin, setLastWin] = useState<{amount: number, multiplier: number} | null>(null);
+  const [riskLevel, setRiskLevel] = useState<RiskLevel>('medium');
+  const [activeMultiplierIndex, setActiveMultiplierIndex] = useState<number | null>(null);
+  const [rowCount, setRowCount] = useState(8);
 
-  // Generate multipliers when config changes
-  useEffect(() => {
-    const newMultipliers = generateMultipliers(config.rows, config.risk);
-    setMultipliers(newMultipliers);
-  }, [config.rows, config.risk]);
-
-  // Re-initialize pins with exact dot counts per row
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear animation if running
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-
-    // Reset balls
-    ballsRef.current = [];
-    processedBallIdsRef.current.clear();
-    setActiveBalls([]);
-
-    // Initialize pins with exact dot pattern
-    const pins: Pin[] = [];
-    const startY = 60;
-    const centerX = CANVAS_WIDTH / 2;
-
-    // Calculate maximum spacing to fit all rows in the canvas
-    const maxDotsInRow = DOTS_PER_ROW[config.rows - 1]; // Last row has the most dots
-    const effectiveSpacing = Math.min(40, (CANVAS_WIDTH * 0.8) / maxDotsInRow);
-
-    // Create pins for each row with the exact number of dots
-    for (let row = 0; row < config.rows; row++) {
-      const dotsInRow = DOTS_PER_ROW[row];
-      const rowWidth = (dotsInRow - 1) * effectiveSpacing;
-      const startXForRow = centerX - rowWidth / 2;
-
-      for (let col = 0; col < dotsInRow; col++) {
-        pins.push({
-          x: startXForRow + (col * effectiveSpacing),
-          y: startY + (row * effectiveSpacing)
-        });
+  // Replace handleRiskLevelChange with slider handler
+  const handleRiskLevelChange = useCallback((value: number[]) => {
+    const newRisk = sliderToRiskLevel(value[0]);
+    setRiskLevel(newRisk);
+    requestAnimationFrame(() => {
+      if (pinsRef.current?.length) {
+        drawGame();
       }
-    }
-
-    pinsRef.current = pins;
-    
-    // FIXED: Make sure canvas height is sufficient for full animation
-    // Calculate the height based on rows plus extra padding for the ball to fall into buckets
-    const height = (config.rows - 1) * effectiveSpacing;
-    // Add extra padding to ensure the ball always completes its animation
-    const calculatedHeight = startY + height + BOTTOM_PADDING + 200; // Increased from 100 to 200
-    canvasHeightRef.current = calculatedHeight;
-    
-    // Update canvas height
-    canvas.height = calculatedHeight;
-    
-    // Update CSS variable for calculations
-    document.documentElement.style.setProperty('--plinko-current-rows', config.rows.toString());
-    document.documentElement.style.setProperty('--plinko-pin-spacing', `${effectiveSpacing}px`);
-    document.documentElement.style.setProperty('--plinko-top-offset', `${startY}px`);
-    document.documentElement.style.setProperty('--plinko-canvas-height', `${calculatedHeight}px`);
-    document.documentElement.style.setProperty('--plinko-canvas-width', `${CANVAS_WIDTH}px`);
-    document.documentElement.style.setProperty('--plinko-bottom-padding', `${BOTTOM_PADDING}px`);
-    
-    // Add canvas class for styling
-    canvas.classList.add('plinko-canvas');
-    
-    drawGame(ctx);
-
-    // Restart animation loop
-    animationRef.current = requestAnimationFrame(gameLoop);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [config.rows, config.risk]);
-
-  // Modify the re-initialize pins effect
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Calculate effective spacing based on canvas size
-    const maxDotsInRow = DOTS_PER_ROW[config.rows - 1];
-    const effectiveSpacing = Math.min(CANVAS_WIDTH / maxDotsInRow, 40);
-    
-    // Adjust startY to spread pins across full canvas height
-    const totalHeight = CANVAS_HEIGHT;
-    const contentHeight = (config.rows - 1) * effectiveSpacing;
-    const startY = (totalHeight - contentHeight) / 2;
-
-    // Rest of pin initialization...
-    const pins: Pin[] = [];
-    const centerX = CANVAS_WIDTH / 2;
-
-    for (let row = 0; row < config.rows; row++) {
-      const dotsInRow = DOTS_PER_ROW[row];
-      const rowWidth = (dotsInRow - 1) * effectiveSpacing;
-      const startXForRow = centerX - rowWidth / 2;
-
-      for (let col = 0; col < dotsInRow; col++) {
-        pins.push({
-          x: startXForRow + (col * effectiveSpacing),
-          y: startY + (row * effectiveSpacing)
-        });
-      }
-    }
-
-    pinsRef.current = pins;
-    canvas.height = CANVAS_HEIGHT; // Force square canvas
-    canvas.width = CANVAS_WIDTH;
-    
-    // ...existing code...
-  }, [config.rows, config.risk]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Initialize pins in triangle formation
-    const pins: Pin[] = [];
-    const startY = 60; // Adjusted starting Y position
-    const centerX = CANVAS_WIDTH / 2;
-
-    // Start from second row (index 1) to remove first row
-    for (let row = 1; row < config.rows; row++) {
-      const pinsInRow = row + 1;
-      const rowWidth = pinsInRow * PIN_SPACING;
-      const startXForRow = centerX - (rowWidth / 2) + (PIN_SPACING / 2);
-
-      for (let col = 0; col < pinsInRow; col++) {
-        pins.push({
-          x: startXForRow + (col * PIN_SPACING),
-          y: startY + (row * PIN_SPACING)
-        });
-      }
-    }
-
-    pinsRef.current = pins;
-    drawGame(ctx);
-
-    // Start animation loop
-    animationRef.current = requestAnimationFrame(gameLoop);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
-    };
+    });
   }, []);
 
-  useEffect(() => {
-    // Only add new balls that haven't been processed yet
-    const newBalls = activeBalls.filter(ball => !processedBallIdsRef.current.has(ball.id));
-    
-    // Mark these balls as processed
-    newBalls.forEach(ball => processedBallIdsRef.current.add(ball.id));
-    
-    // Update our reference with only the new balls added to existing ones
-    ballsRef.current = [...ballsRef.current, ...newBalls];
-  }, [activeBalls]);
+  // Replace handleRowCountChange with slider handler
+  const handleRowCountChange = (value: number[]) => {
+    const newRowCount = value[0];
+    if (MULTIPLIER_VALUES[riskLevel][newRowCount]) {
+      setRowCount(newRowCount);
+    }
+  };
 
-  const gameLoop = (timestamp: number) => {
+  // Add effect to handle multiplier highlighting
+  useEffect(() => {
+    if (activeMultiplierIndex !== null) {
+      const buckets = document.querySelectorAll('.multiplier-item');
+      buckets.forEach(b => b.classList.remove('active'));
+      buckets[activeMultiplierIndex]?.classList.add('active');
+
+      // Reset after animation
+      const timer = setTimeout(() => {
+        setActiveMultiplierIndex(null);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [activeMultiplierIndex]);
+
+  // Initialize pins in triangle formation
+  useEffect(() => {
+    const pins: Pin[] = [];
+    const centerX = CANVAS_WIDTH / 2;
+    const availableHeight = CANVAS_HEIGHT - TOP_PADDING - BUCKET_HEIGHT;
+    const dynamicSpacing = Math.min(
+      CANVAS_WIDTH / (rowCount + 3),
+      availableHeight / rowCount // Removed -1 to use full height
+    );
+
+    Array.from({ length: rowCount }, (_, row) => {
+      const pinsInRow = row + 3; // Start with 3 pins, add one per row
+      const rowWidth = (pinsInRow - 1) * dynamicSpacing;
+      const startX = centerX - rowWidth / 2;
+      const y = TOP_PADDING + (row * dynamicSpacing);
+
+      for (let i = 0; i < pinsInRow; i++) {
+        pins.push({
+          x: startX + (i * dynamicSpacing),
+          y: y
+        });
+      }
+    });
+
+    pinsRef.current = pins;
+    drawGame();
+  }, [rowCount, riskLevel]); // Add riskLevel as dependency
+
+  // Add effect to handle risk level changes
+  useEffect(() => {
+    if (pinsRef.current?.length) {
+      drawGame();
+    }
+  }, [riskLevel]);
+
+  const getBucketIndex = (x: number) => {
+    // Get the last row of pins
+    const lastRowPins = pinsRef.current
+      .filter(pin => pin.y === Math.max(...pinsRef.current.map(p => p.y)));
+    
+    // Sort pins from left to right
+    lastRowPins.sort((a, b) => a.x - b.x);
+    
+    // Find which span the ball is in by comparing with pin positions
+    for (let i = 0; i < lastRowPins.length - 1; i++) {
+      const leftPin = lastRowPins[i];
+      const rightPin = lastRowPins[i + 1];
+      const middleX = (leftPin.x + rightPin.x) / 2;
+      
+      if (x < middleX) return i;
+    }
+    
+    // If we haven't returned yet, must be in the last span
+    return lastRowPins.length - 1;
+  };
+
+  const drawGame = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Update physics
-    updateBalls();
-    
-    // Draw current game state
-    drawGame(ctx);
-    
-    // Continue the loop
-    animationRef.current = requestAnimationFrame(gameLoop);
-  };
-
-  // Fix the updateBalls function to correctly handle multipliers
-  const updateBalls = () => {
-    // Reduced gravity from 0.1 to 0.05 for much slower fall
-    const gravity = 0.05;
-    // Reduced bounce factor for gentler bounces
-    const bounce = 0.5;
-    // Added more friction to slow horizontal movement
-    const friction = 0.98;
-    
-    // Calculate triangle boundaries based on dot pattern
-    const centerX = CANVAS_WIDTH / 2;
-    const topY = 60;
-    
-    // Calculate the maximum width based on the last row's dots
-    const maxDotsInRow = DOTS_PER_ROW[config.rows - 1];
-    const effectiveSpacing = Math.min(40, (CANVAS_WIDTH * 0.8) / maxDotsInRow);
-    const maxWidth = (maxDotsInRow - 1) * effectiveSpacing;
-    const height = (config.rows - 1) * effectiveSpacing;
-    
-    // Work with the ref directly for physics updates
-    const updatedBalls: Ball[] = [];
-    const completedBalls: Ball[] = [];
-    
-    for (const ball of ballsRef.current) {
-      const newBall = { ...ball };
-      
-      // Apply physics
-      newBall.vy += gravity;
-      newBall.y += newBall.vy;
-      newBall.x += newBall.vx;
-      newBall.vx *= friction;
-      
-      // Calculate current width based on progress down the board
-      const progress = Math.max(0, Math.min(1, (newBall.y - topY) / height));
-      const firstRowWidth = (DOTS_PER_ROW[0] - 1) * effectiveSpacing;
-      const widthRange = maxWidth - firstRowWidth;
-      const currentWidth = firstRowWidth + (widthRange * progress);
-      
-      // Calculate boundaries with padding for the ball
-      const leftBoundary = centerX - (currentWidth / 2) - BALL_RADIUS;
-      const rightBoundary = centerX + (currentWidth / 2) + BALL_RADIUS;
-      
-      // Keep ball inside boundaries
-      if (newBall.x < leftBoundary) {
-        newBall.x = leftBoundary;
-        newBall.vx *= -bounce;
-      } else if (newBall.x > rightBoundary) {
-        newBall.x = rightBoundary;
-        newBall.vx *= -bounce;
-      }
-      
-      // Check pin collisions
-      pinsRef.current.forEach(pin => {
-        const dx = newBall.x - pin.x;
-        const dy = newBall.y - pin.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < BALL_RADIUS + PIN_RADIUS) {
-          const angle = Math.atan2(dy, dx);
-          
-          // Better collision response
-          const speed = Math.sqrt(newBall.vx * newBall.vx + newBall.vy * newBall.vy);
-          newBall.vx = Math.cos(angle) * speed * bounce + (Math.random() - 0.5);
-          newBall.vy = Math.sin(angle) * speed * bounce;
-          
-          // Prevent sticking
-          newBall.x = pin.x + (BALL_RADIUS + PIN_RADIUS + 1) * Math.cos(angle);
-          newBall.y = pin.y + (BALL_RADIUS + PIN_RADIUS + 1) * Math.sin(angle);
-        }
-      });
-      
-      // FIXED: Calculate bottom position with extra padding to ensure ball completes animation
-      const bottomY = topY + height + BOTTOM_PADDING;
-      
-      // FIXED: Only mark ball as complete when it has fully fallen into a bucket
-      // This ensures we see the ball reach the multiplier section
-      if (newBall.y > bottomY + 150) { // Increased padding
-        completedBalls.push(newBall);
-        processedBallIdsRef.current.delete(newBall.id);
-      } else {
-        updatedBalls.push(newBall);
-      }
-    }
-    
-    // Process completed balls and show results
-    if (completedBalls.length > 0) {
-      for (const ball of completedBalls) {
-        try {
-          // Parse bet amount and ensure it's a valid number
-          const amount = parseFloat(betAmount);
-          if (isNaN(amount) || amount <= 0) {
-            console.error("Invalid bet amount:", betAmount);
-            toast.error("Invalid bet amount");
-            continue;
-          }
-          
-          // Get appropriate multiplier
-          if (!multipliers || multipliers.length === 0) {
-            console.error("No multipliers available");
-            continue;
-          }
-          
-          // Calculate landing position correctly based on current config
-          const bottomY = topY + height + effectiveSpacing;
-          const maxDotsInLastRow = DOTS_PER_ROW[config.rows - 1];
-          const triangleWidth = (maxDotsInLastRow - 1) * effectiveSpacing;
-          const triangleLeft = centerX - triangleWidth / 2;
-          
-          // Calculate position relative to the triangle to find correct multiplier
-          const relativePosition = (ball.x - triangleLeft) / triangleWidth;
-          const clampedPosition = Math.max(0, Math.min(1, relativePosition));
-          const multiplierIndex = Math.floor(clampedPosition * multipliers.length);
-          
-          // Ensure index is within bounds
-          const safeIndex = Math.max(0, Math.min(multiplierIndex, multipliers.length - 1));
-          const multiplier = multipliers[safeIndex];
-          
-          // Calculate and display winnings
-          const winAmount = amount * multiplier;
-          
-          // FIXED: Set the lastWinAmount state to trigger toast render
-          setLastWinAmount({ amount: winAmount, multiplier });
-          
-          // Add to multiplier hits history
-          setMultiplierHits(prev => {
-            const newHits = [{ multiplier, amount: winAmount }, ...prev];
-            return newHits.slice(0, 10); // Keep only last 10 hits
-          });
-          
-          // Create message outside of setTimeout
-          const message = `Won $${winAmount.toFixed(2)}! (${multiplier}x)`;
-          console.log(message, { 
-            amount, 
-            multiplier,
-            position: clampedPosition,
-            index: safeIndex,
-            multiplierCount: multipliers.length 
-          });
-          
-          // Use immediate toast to ensure it displays - FIXED to show properly
-          toast.success(`Won $${winAmount.toFixed(2)}! (${multiplier}x)`, {
-            id: `win-${ball.id}`, // Unique ID to prevent duplicates
-            duration: 3000
-          });
-          
-          // ADDED: Visual feedback by highlighting the bucket where the ball landed
-          if (document) {
-            const buckets = document.querySelectorAll('.multiplier-item');
-            if (buckets && buckets[safeIndex]) {
-              buckets[safeIndex].classList.add('active');
-              setTimeout(() => {
-                buckets[safeIndex].classList.remove('active');
-              }, 1000);
-            }
-          }
-        } catch (err) {
-          console.error("Error processing win:", err);
-          toast.error("Something went wrong calculating your win");
-        }
-      }
-      
-      // Update state less frequently - only when balls are completed
-      setActiveBalls(updatedBalls);
-
-      // If this is the last ball completing, re-enable the button
-      if (updatedBalls.length === 0) {
-        setIsButtonDisabled(false);
-      }
-    }
-    
-    // Update the ref without triggering re-renders
-    ballsRef.current = updatedBalls;
-  };
-
-  // Modified drawGame to completely remove the bottom row
-  const drawGame = (ctx: CanvasRenderingContext2D) => {
-    ctx.clearRect(0, 0, CANVAS_WIDTH, canvasHeightRef.current);
-    
-    // Draw background - changed to F5F7FE
+    // Clear and draw background
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     ctx.fillStyle = '#F5F7FE';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, canvasHeightRef.current);
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw pins - keep black
-    ctx.fillStyle = '#000000';
+    // Get last row of pins for span visualization
+    const lastRowPins = pinsRef.current
+      .filter(pin => pin.y === Math.max(...pinsRef.current.map(p => p.y)))
+      .sort((a, b) => a.x - b.x);
+
+    // Draw buckets
+    const bucketHeight = 40;
+    const cornerRadius = 4; // Add radius for rounded corners
+    const bucketMargin = 1.6; // 0.1rem = 1.6px at default scaling
+    
+    lastRowPins.forEach((pin, i) => {
+      if (i === lastRowPins.length - 1) return;
+      const nextPin = lastRowPins[i + 1];
+      const bucketX = pin.x + bucketMargin;
+      const bucketWidth = (nextPin.x - pin.x) - (bucketMargin * 2);
+      const bucketY = pin.y + 35;
+
+      // Draw rounded rectangle for bucket
+      ctx.beginPath();
+      ctx.moveTo(bucketX + cornerRadius, bucketY);
+      ctx.lineTo(bucketX + bucketWidth - cornerRadius, bucketY);
+      ctx.quadraticCurveTo(bucketX + bucketWidth, bucketY, bucketX + bucketWidth, bucketY + cornerRadius);
+      ctx.lineTo(bucketX + bucketWidth, bucketY + bucketHeight - cornerRadius);
+      ctx.quadraticCurveTo(bucketX + bucketWidth, bucketY + bucketHeight, bucketX + bucketWidth - cornerRadius, bucketY + bucketHeight);
+      ctx.lineTo(bucketX + cornerRadius, bucketY + bucketHeight);
+      ctx.quadraticCurveTo(bucketX, bucketY + bucketHeight, bucketX, bucketY + bucketHeight - cornerRadius);
+      ctx.lineTo(bucketX, bucketY + cornerRadius);
+      ctx.quadraticCurveTo(bucketX, bucketY, bucketX + cornerRadius, bucketY);
+      ctx.closePath();
+
+      // Fill bucket with color
+      ctx.fillStyle = i % 2 === 0 ? '#1f2937' : '#111827';
+      if (activeMultiplierIndex === i) {
+        ctx.fillStyle = '#10b981';
+      }
+      ctx.fill();
+
+      // Draw multiplier text
+      const currentMultipliers = MULTIPLIER_VALUES[riskLevel][rowCount];
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `${lastRowPins.length > 12 ? '10px' : '12px'} "Work Sans", sans-serif`;
+      ctx.textAlign = 'center';
+      if (currentMultipliers && currentMultipliers[i] !== undefined) {
+        const multiplierText = `${currentMultipliers[i]}X`;
+        ctx.fillText(
+          multiplierText,
+          bucketX + bucketWidth / 2,
+          bucketY + bucketHeight / 2 + 4
+        );
+      }
+    });
+
+    // Draw pins
+    ctx.fillStyle = '#000';
     pinsRef.current.forEach(pin => {
       ctx.beginPath();
       ctx.arc(pin.x, pin.y, PIN_RADIUS, 0, Math.PI * 2);
       ctx.fill();
     });
-    
-    // Draw all active balls
+
+    // Draw balls
+    ctx.fillStyle = '#3b82f6';
+    ctx.strokeStyle = '#1e40af';
     ballsRef.current.forEach(ball => {
-      // Draw the ball without glow effect
-      ctx.fillStyle = '#3b82f6';
-      ctx.strokeStyle = '#1e40af';
-      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
       ctx.fill();
@@ -609,65 +298,134 @@ export function Plinko() {
     });
   };
 
-  // Ensure multipliers are initialized correctly when component mounts
-  useEffect(() => {
-    // Generate initial multipliers based on default config
-    const initialMultipliers = generateMultipliers(config.rows, config.risk);
-    setMultipliers(initialMultipliers);
-  }, []);
+  const updatePhysics = () => {
+    const updatedBalls: Ball[] = [];
+    const completedBalls: Ball[] = [];
+    
+    // Calculate the true bottom of the game area
+    const lastPinY = Math.max(...pinsRef.current.map(pin => pin.y));
+    const multiplierLineY = lastPinY + BUCKET_HEIGHT; // Update this to use bucket height
+    const bottomY = CANVAS_HEIGHT + BALL_RADIUS * 2; // True bottom for ball removal
+
+    ballsRef.current.forEach(ball => {
+      const newBall = { ...ball };
+      
+      // Apply gravity and movement
+      newBall.vy += GRAVITY;
+      newBall.y += newBall.vy;
+      newBall.x += newBall.vx;
+      newBall.vx *= FRICTION;
+
+      // Check pin collisions
+      pinsRef.current.forEach(pin => {
+        const dx = newBall.x - pin.x;
+        const dy = newBall.y - pin.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < BALL_RADIUS + PIN_RADIUS) {
+          const angle = Math.atan2(dy, dx);
+          const speed = Math.sqrt(newBall.vx * newBall.vx + newBall.vy * newBall.vy);
+          newBall.vx = Math.cos(angle) * speed * BOUNCE + (Math.random() - 0.5);
+          newBall.vy = Math.sin(angle) * speed * BOUNCE;
+          newBall.x = pin.x + (BALL_RADIUS + PIN_RADIUS + 1) * Math.cos(angle);
+          newBall.y = pin.y + (BALL_RADIUS + PIN_RADIUS + 1) * Math.sin(angle);
+        }
+      });
+
+      // Split the completion logic:
+      // 1. Calculate multiplier when ball reaches multiplier line
+      if (newBall.y >= multiplierLineY && !newBall.id.includes('_scored')) {
+        const exactSpan = getBucketIndex(newBall.x);
+        const multiplier = getMultipliers(pinsRef, rowCount, riskLevel)[exactSpan];
+        const amount = parseFloat(betAmount);
+        
+        if (!isNaN(amount)) {
+          setLastWin({ amount: amount * multiplier, multiplier });
+          setActiveMultiplierIndex(exactSpan); // Update active multiplier index
+          toast.success(`Hit span ${exactSpan + 1}: Won $${(amount * multiplier).toFixed(2)}! (${multiplier}X)`);
+        }
+        newBall.id = `${newBall.id}_scored`;
+      }
+
+      // 2. Only remove ball when it's completely off screen
+      if (newBall.y > bottomY) {
+        completedBalls.push(newBall);
+      } else {
+        updatedBalls.push(newBall);
+      }
+    });
+
+    ballsRef.current = updatedBalls;
+    if (updatedBalls.length === 0) {
+      setIsPlaying(false);
+    }
+  };
+
+  const gameLoop = () => {
+    updatePhysics();
+    drawGame();
+    animationRef.current = requestAnimationFrame(gameLoop);
+  };
 
   const dropBall = () => {
-    const amount = parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(parseFloat(betAmount)) || parseFloat(betAmount) <= 0) {
       toast.error("Please enter a valid bet amount");
       return;
     }
 
-    // Disable button during the animation
-    setIsButtonDisabled(true);
-    
-    // Calculate starting position aligned with the first row
-    const centerX = CANVAS_WIDTH / 2;
-    const maxDotsInRow = DOTS_PER_ROW[config.rows - 1];
-    const effectiveSpacing = Math.min(40, (CANVAS_WIDTH * 0.8) / maxDotsInRow);
-    
-    // Start ball above the center of the first row with a slight random offset
-    const ballId = crypto.randomUUID();
+    setIsPlaying(true);
     const newBall: Ball = {
-      id: ballId,
-      x: centerX + (Math.random() - 0.5) * (effectiveSpacing / 2),
-      y: 30,
-      vy: 0.5,
-      vx: 0
+      x: CANVAS_WIDTH / 2,
+      y: 20,
+      vx: 0,
+      vy: 0,
+      id: Math.random().toString()
     };
-
-    // Reset previous win display
-    setLastWinAmount(null);
     
-    // Only add to state, the useEffect will handle adding to refs
-    setActiveBalls(prev => [...prev, newBall]);
-    
-    // Ensure animation is running
+    ballsRef.current.push(newBall);
     if (!animationRef.current) {
       animationRef.current = requestAnimationFrame(gameLoop);
     }
   };
 
-  // Display win notification outside of updateBalls to ensure it renders
-  useEffect(() => {
-    if (lastWinAmount) {
-      toast.success(
-        `Won $${lastWinAmount.amount.toFixed(2)}! (${lastWinAmount.multiplier}x)`,
-        { duration: 3000 }
-      );
-    }
-  }, [lastWinAmount]);
+  // Add this helper function to calculate multiplier widths
+  const getMultiplierStyle = () => {
+    const defaultStyle = {
+      containerStyle: {},
+      itemStyle: {},
+      textSizeClass: ''
+    };
+    if (!pinsRef.current?.length) return defaultStyle;
+    
+    const lastRowPins = pinsRef.current
+      .filter(pin => pin.y === Math.max(...pinsRef.current.map(p => p.y)))
+      .sort((a, b) => a.x - b.x);
+  
+    return {
+      containerStyle: {
+        width: `${CANVAS_WIDTH}px`,
+        margin: '0 auto',
+        position: 'absolute',
+        bottom: '0',
+        display: 'grid',
+        gridTemplateColumns: `repeat(${lastRowPins.length - 1}, 1fr)`,
+        gap: '0px',
+        paddingLeft: `${lastRowPins[0].x}px`,
+        paddingRight: `${CANVAS_WIDTH - lastRowPins[lastRowPins.length - 1].x}px`
+      },
+      itemStyle: {
+        width: '100%',
+        position: 'relative'
+      },
+      textSizeClass: lastRowPins.length > 12 ? 'multiplier-text-xs' : ''
+    };
+  };
 
+  // Update the render section
   return (
     <div className="flex gap-4 plinko-game-container">
-      {/* Sticky Sidebar */}
       <div className="w-[240px] sticky top-[80px] self-start">
-        <Card className="p-4 space-y-4 plinko-controls">
+        <Card className="p-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Bet Amount</label>
             <Input
@@ -679,49 +437,34 @@ export function Plinko() {
               disabled={isPlaying}
             />
           </div>
-
-          {/* Row selector */}
+          
           <div className="space-y-2">
-            <label className="text-sm font-medium">Number of Rows</label>
-            <Select
-              value={config.rows.toString()}
-              onValueChange={(value) => setConfig(prev => ({ ...prev, rows: parseInt(value) }))}
-              disabled={isButtonDisabled}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Rows" />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: MAX_ROWS - MIN_ROWS + 1 }, (_, i) => MIN_ROWS + i).map(rows => (
-                  <SelectItem key={rows} value={rows.toString()}>
-                    {rows} Rows ({DOTS_PER_ROW.slice(0, rows).reduce((a, b) => a + b, 0)} dots)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label className="text-sm font-medium">Number of Rows ({rowCount})</label>
+            <Slider
+              defaultValue={[rowCount]}
+              max={MAX_ROWS}
+              min={MIN_ROWS}
+              step={1}
+              onValueChange={handleRowCountChange}
+              disabled={ballsRef.current.length > 0}
+              className="py-4"
+            />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Risk Level</label>
-            <Select
-              value={config.risk}
-              onValueChange={(value: RiskLevel) => setConfig(prev => ({ ...prev, risk: value }))}
-              disabled={isButtonDisabled}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Risk Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low Risk</SelectItem>
-                <SelectItem value="medium">Medium Risk</SelectItem>
-                <SelectItem value="high">High Risk</SelectItem>
-              </SelectContent>
-            </Select>
+            <label className="text-sm font-medium">Risk Level ({riskLevel})</label>
+            <Slider
+              defaultValue={[riskLevelToSlider(riskLevel)]}
+              max={100}
+              step={1}
+              onValueChange={handleRiskLevelChange}
+              disabled={ballsRef.current.length > 0}
+              className="py-4"
+            />
           </div>
 
           <Button 
             onClick={dropBall}
-            disabled={isButtonDisabled}
             className="w-full"
           >
             Drop Ball
@@ -729,48 +472,18 @@ export function Plinko() {
         </Card>
       </div>
 
-      {/* Main Game Area */}
-      <div className="flex-1 space-y-4">
-        {/* Added: Multiplier Hits Display on top of the canvas */}
-        <div className="w-full flex justify-center mb-2">
-          <div className="flex items-center gap-3 overflow-x-auto p-2 multiplier-hits-container">
-            {multiplierHits.length > 0 ? (
-              multiplierHits.map((hit, index) => (
-                <div 
-                  key={index} 
-                  className={`flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold ${
-                    hit.multiplier >= 2 ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'
-                  }`}
-                >
-                  {hit.multiplier}x
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500 text-sm">No hits yet</div>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex flex-col items-center plinko-board-wrapper">
-          <canvas 
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={canvasHeightRef.current}
-            className="plinko-canvas"
-          />
-          
-          <div className="w-[600px] multiplier-row">
-            <MultiplierRow multipliers={multipliers} />
+      <div className="flex-1">
+        <div className="flex flex-col items-center">
+          <div className="relative w-full">
+            <canvas 
+              ref={canvasRef}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              className="plinko-canvas"
+            />
           </div>
         </div>
       </div>
-      
-      {/* Win notification */}
-      {lastWinAmount && (
-        <div className="win-notification absolute top-10 left-1/2 transform -translate-x-1/2 bg-green-600 px-4 py-2 rounded-full text-white font-bold shadow-lg">
-          Won ${lastWinAmount.amount.toFixed(2)}! ({lastWinAmount.multiplier}x)
-        </div>
-      )}
     </div>
   );
 }
