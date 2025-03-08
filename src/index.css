@@ -1,0 +1,282 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 223 94% 98%; /* Changed to #F5F8FE */
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 250 95% 60%;
+    --primary-foreground: 210 40% 98%;
+    --primary-soft: 250 95% 90%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent-purple: 270 76% 90%;
+    --accent-soft: 210 100% 96%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 250 95% 60%;
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+    --radius: 1rem;
+  }
+
+  /* Add this new rule for container full width */
+  .container {
+    max-width: 100% !important;
+  }
+ 
+  .dark {
+    --background: 220 20% 16%;
+    --foreground: 210 40% 98%;
+    --card: 220 20% 18%;
+    --card-foreground: 210 40% 98%;
+    --popover: 220 20% 16%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 252 100% 72%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-soft: 252 60% 26%;
+    --secondary: 217.2 32.6% 22%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 22%;
+    --muted-foreground: 215 20.2% 75%;
+    --accent: 217.2 32.6% 22%;
+    --accent-foreground: 210 40% 98%;
+    --accent-purple: 270 76% 38%;
+    --accent-soft: 210 100% 26%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 26%;
+    --input: 217.2 32.6% 26%;
+    --ring: 252 100% 72%;
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans min-h-screen;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
+
+  /* Responsive headings */
+  h1 {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+  }
+  
+  h2 {
+    @apply text-xl md:text-2xl lg:text-3xl;
+  }
+  
+  h3 {
+    @apply text-lg md:text-xl lg:text-2xl;
+  }
+
+  /* Optimize content loading */
+  img {
+    @apply transition-opacity;
+    opacity: 0;
+  }
+
+  img.loaded {
+    opacity: 1;
+  }
+  
+  /* Mobile-first form controls */
+  input, select, textarea, button {
+    @apply min-h-[44px] md:min-h-[40px];
+  }
+  
+  /* Enhanced touch targets for mobile */
+  button, a {
+    @apply touch-action-manipulation;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-elegant;
+  }
+
+  .glass-card {
+    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-white/30 dark:border-white/5 rounded-xl shadow-card transition-all duration-300 hover:shadow-card-hover;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary via-blue-500 to-primary/70 bg-clip-text text-transparent animate-gradient bg-300% font-bold;
+  }
+
+  .gradient-purple {
+    @apply bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .nav-item {
+    @apply transition-colors duration-200 hover:text-primary;
+  }
+  
+  /* Hide scrollbar */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  /* Touch action manipulation for better mobile response */
+  .touch-action-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Mobile optimizations */
+  .mobile-container {
+    @apply px-4 sm:px-6 lg:px-8 mx-auto w-full;
+  }
+
+  .mobile-grid {
+    @apply grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+  }
+
+  /* Responsive text */
+  .responsive-text {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  .responsive-heading {
+    @apply text-xl sm:text-2xl lg:text-3xl font-bold;
+  }
+
+  /* Mobile-first padding */
+  .responsive-padding {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+
+  /* Mobile touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Loading optimizations */
+  .content-visibility-auto {
+    content-visibility: auto;
+  }
+
+  /* Responsive flexbox utilities */
+  .responsive-flex {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  .responsive-gap {
+    @apply gap-4 sm:gap-6 lg:gap-8;
+  }
+
+  /* Button effects */
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary to-violet-500 hover:from-violet-600 hover:to-primary transition-all duration-300;
+  }
+  
+  /* Card design */
+  .elegant-card {
+    @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-card transition-all duration-300 hover:shadow-card-hover;
+  }
+  
+  /* Sidebar enhancements */
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-primary-soft dark:hover:bg-primary-soft hover:text-primary dark:hover:text-primary transition-all duration-200;
+  }
+  
+  .sidebar-item-active {
+    @apply bg-primary-soft text-primary font-medium;
+  }
+  
+  /* Form elements */
+  .elegant-input {
+    @apply border border-gray-200 dark:border-gray-800 rounded-lg p-3 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-700;
+  }
+  
+  /* Table styles */
+  .elegant-table {
+    @apply w-full border-collapse overflow-x-auto;
+  }
+  
+  .elegant-table-wrapper {
+    @apply w-full overflow-x-auto pb-4;
+  }
+  
+  .elegant-table th {
+    @apply bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium px-4 py-3 text-left border-b border-gray-200 dark:border-gray-700;
+  }
+  
+  .elegant-table td {
+    @apply px-4 py-3 border-b border-gray-100 dark:border-gray-700;
+  }
+  
+  .elegant-table tr:hover {
+    @apply bg-gray-50/50 dark:bg-gray-800/50 transition-colors duration-150;
+  }
+  
+  /* Fixed bottom navigation for mobile */
+  .mobile-nav-padding {
+    @apply pb-16 md:pb-0;
+  }
+
+  /* Add these classes at the end of the file */
+  .sticky {
+    position: sticky;
+    position: -webkit-sticky;
+  }
+
+  .top-4 {
+    top: 1rem;
+  }
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient 8s ease infinite;
+}
+
+/* Improve mobile touch targets */
+@media (max-width: 640px) {
+  button, a {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Add spacing for mobile bottom navigation */
+  main {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 4rem);
+  }
+  
+  /* Adjust dropdowns on mobile */
+  .dropdown-content {
+    min-width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+  }
+}

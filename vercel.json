@@ -1,0 +1,53 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/admin/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin-oddkings.vercel.app"
+        }
+      ],
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin-oddkings.vercel.app"
+        }
+      ],
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/(.*)",
+      "missing": [
+        {
+          "type": "host",
+          "value": "admin-oddkings.vercel.app"
+        }
+      ],
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin-oddkings.vercel.app"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache"
+        }
+      ]
+    }
+  ]
+}

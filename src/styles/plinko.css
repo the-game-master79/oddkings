@@ -1,0 +1,260 @@
+/* Core game container */
+.plinko-game-container {
+  --animation-duration: 3s;
+  position: relative;
+  padding-top: 20px; /* Add space at top for multiplier hits */
+}
+
+/* Board styling */
+.plinko-board {
+  background: #F5F7FE;
+  position: relative;
+  overflow: hidden;
+  transition: height 0.5s ease;
+  border: none;
+}
+
+/* Board wrapper - remove all spacing */
+.plinko-board-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  width: 600px;
+}
+
+/* Canvas specific styles */
+canvas.plinko-canvas {
+  display: block;
+  will-change: height;
+  transition: height 0.5s ease;
+  background: #F5F7FE;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
+}
+
+/* Pin styling - these are drawn directly on canvas but useful for debugging */
+.plinko-pin {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Ball styling - these are drawn directly on canvas but useful for debugging */
+.plinko-ball {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Multiplier row styling - separated from canvas */
+.plinko-multiplier-row {
+  width: 100%;
+  margin: -1px 0 0 0; /* Negative margin to overlap with canvas */
+  padding: 0;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  border: none;
+}
+
+.plinko-multipliers {
+  transition: all 0.3s ease;
+  display: grid;
+  width: 100%;
+}
+
+/* Make multiplier items more visible and connected to the canvas */
+.multiplier-item {
+  position: relative;
+  text-align: center;
+  transition: all 0.3s ease;
+  height: 40px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  padding: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.multiplier-text {
+  font-size: clamp(0.75rem, 2vw, 1rem);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  padding: 0 2px;
+}
+
+/* Remove any gaps between multiplier boxes */
+.plinko-bucket {
+  transition: background-color 0.3s ease;
+  position: relative;
+  font-size: 1rem;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.plinko-bucket:first-child {
+  border-bottom-left-radius: 8px;
+}
+
+.plinko-bucket:last-child {
+  border-bottom-right-radius: 8px;
+}
+
+/* Enhanced active state for better visibility */
+.plinko-bucket.active {
+  animation: plinko-pulse 1s ease-in-out;
+  background-color: #16a34a !important;
+  color: white;
+  transform: scale(1.05);
+  z-index: 5;
+  box-shadow: 0 0 15px rgba(22, 163, 74, 0.8);
+}
+
+@keyframes plinko-pulse {
+  0% {
+    transform: scale(1);
+    background-color: #16a34a;
+  }
+  50% {
+    transform: scale(1.1);
+    background-color: #15803d;
+  }
+  100% {
+    transform: scale(1.05);
+    background-color: #16a34a;
+  }
+}
+
+/* Controls styling */
+.plinko-controls {
+  background-color: #1a1b1e;
+  border: 1px solid #2d2e32;
+}
+
+.plinko-controls input:focus,
+.plinko-controls select:focus,
+.plinko-controls button:focus {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* Animations */
+.bet-result {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* CSS Variables for dynamic calculations - updated for better ball animation */
+:root {
+  --plinko-current-rows: 8;
+  --plinko-pin-spacing: 40px;
+  --plinko-top-offset: 60px;
+  --plinko-canvas-width: 600px;
+  --plinko-canvas-height: 600px;
+  --plinko-bottom-padding: 150px; /* Increased bottom padding */
+}
+
+/* Helper to ensure buckets align with ball landing zones */
+.plinko-bottom-zone {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: var(--plinko-bottom-padding);
+  z-index: 1;
+}
+
+/* Win notification styling */
+.win-notification {
+  animation: popIn 0.5s ease-out;
+  z-index: 50;
+}
+
+@keyframes popIn {
+  0% { transform: translate(-50%, -20px); opacity: 0; }
+  50% { transform: translate(-50%, 5px); opacity: 1; }
+  100% { transform: translate(-50%, 0); }
+}
+
+/* Toast customization for better visibility */
+[data-sonner-toast] {
+  --toast-background: #16a34a !important;
+  --toast-text: white !important;
+  font-weight: 600 !important;
+}
+
+/* New styles for multiplier hits display */
+.multiplier-hits-container {
+  display: flex;
+  background-color: rgba(30, 41, 59, 0.8);
+  border-radius: 8px;
+  padding: 8px;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 600px;
+  justify-content: center;
+  border: 1px solid #2d3748;
+}
+
+.multiplier-hits-container > div {
+  animation: scaleIn 0.3s ease-out;
+  transition: transform 0.2s;
+}
+
+.multiplier-hits-container > div:hover {
+  transform: scale(1.1);
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  :root {
+    --plinko-pin-spacing: 30px;
+  }
+  
+  .plinko-game-container {
+    flex-direction: column;
+  }
+  
+  .plinko-controls {
+    position: static;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  
+  .plinko-canvas,
+  .plinko-multiplier-row {
+    width: 100%;
+    max-width: calc(100vw - 32px);
+  }
+}
