@@ -1,11 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Newspaper, Trophy, Dice1 } from "lucide-react";
+import { Newspaper, Trophy, Dice1, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const MobileNavigation = () => {
   const location = useLocation();
   
   const links = [
+    {
+      href: '/dashboard',
+      label: 'Dashboard',
+      icon: <LayoutDashboard size={20} />,
+    },
     {
       href: '/',
       label: 'News',

@@ -1,3 +1,21 @@
+@font-face {
+  font-family: 'Agrandir-Bold';
+  src: url('/public/fonts/Agrandir-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+  font-named-instance: 'Bold';
+}
+
+@font-face {
+  font-family: 'Agrandir-RegMed';
+  src: url('/public/fonts/Agrandir-RegMed.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  font-named-instance: 'Regular';
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -67,12 +85,14 @@
     @apply border-border;
   }
 
-  body {
+  body, h5, h6 {
     @apply bg-background text-foreground font-sans min-h-screen;
+    font-family: 'Agrandir-RegMed', system-ui, sans-serif;
     letter-spacing: -0.01em;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1, h2, h3, h4 {
+    font-family: 'Agrandir-Bold', system-ui, sans-serif;
     @apply tracking-tight;
   }
 
@@ -87,6 +107,10 @@
   
   h3 {
     @apply text-lg md:text-xl lg:text-2xl;
+  }
+
+  p {
+    font-family: 'Agrandir-RegMed', system-ui, sans-serif;
   }
 
   /* Optimize content loading */

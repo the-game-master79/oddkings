@@ -2,6 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Gamepad2, Dice5, PlayCircle, TrendingUp, Crown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface GameCard {
   id: string;
@@ -20,6 +23,15 @@ const games: GameCard[] = [
     title: 'Plinko',
     description: 'Drop the ball and watch it bounce for multiplied winnings!',
     image: '/games/plinko.jpg',
+    type: 'special',
+    featured: true,
+    minimumBet: 0.1
+  },
+  {
+    id: 'mines',
+    title: 'Mines',
+    description: 'Find the gems and avoid the mines to win big!',
+    image: '/games/mines.jpg',
     type: 'special',
     featured: true,
     minimumBet: 0.1
@@ -84,6 +96,30 @@ const typeIcons = {
 };
 
 export default function Casino() {
+  const navigate = useNavigate();
+  const { data: activeGames } = useQuery({
+    queryKey: ["casino-games"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("casino_games")
+        .select("*")
+        .eq("is_active", true)
+        .order("title");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const filteredGames = games.filter(game => 
+    activeGames?.some(activeGame => activeGame.id === game.id)
+  );
+
+  const handleGameClick = (game: GameCard) => {
+    if (game.comingSoon) return;
+    navigate(`/casino/${game.id}`);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
@@ -91,15 +127,16 @@ export default function Casino() {
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {games.map((game) => {
+        {filteredGames.map((game) => {
           const Icon = typeIcons[game.type];
           
           return (
             <Card 
               key={game.id} 
-              className={`overflow-hidden transition-all duration-300 ${
-                game.comingSoon ? 'opacity-75' : 'hover:shadow-lg'
+              className={`overflow-hidden transition-all duration-300 cursor-pointer ${
+                game.comingSoon ? 'opacity-75 cursor-not-allowed' : 'hover:shadow-lg hover:-translate-y-1'
               }`}
+              onClick={() => handleGameClick(game)}
             >
               <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
                 {game.featured && (
@@ -134,6 +171,10 @@ export default function Casino() {
                 <Button 
                   className="w-full"
                   disabled={game.comingSoon}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click when clicking button
+                    handleGameClick(game);
+                  }}
                 >
                   {game.comingSoon ? 'Coming Soon' : 'Play Now'}
                 </Button>

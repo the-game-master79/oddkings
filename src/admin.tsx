@@ -16,6 +16,7 @@ import Users from '@/pages/admin/Users'
 import Withdrawals from '@/pages/admin/Withdrawals'
 import Promotions from '@/pages/admin/Promotions'
 import Sports from '@/pages/admin/Sports'
+import Casino from '@/pages/admin/Casino'
 import { AdminAuthProvider } from '@/context/admin/AdminAuthContext'
 import '@/index.css'
 
@@ -118,6 +119,10 @@ const router = createBrowserRouter([
           { 
             path: 'sports',
             element: <Sports /> 
+          },
+          { 
+            path: 'casino',
+            element: <Casino /> 
           },
           {
             path: '*',

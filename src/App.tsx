@@ -22,6 +22,7 @@ import { AdminGuard } from '@/components/auth/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout'
 import { Toaster } from "sonner";
 import "./App.css";
+import Dashboard from "./pages/Dashboard";
 
 // Create router with future flag
 const router = createBrowserRouter([
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
       { path: "trades/history", element: <TradeHistory /> },
       { path: "withdraw", element: <Withdraw /> },
       { path: "affiliates", element: <Affiliates /> },
+      { path: "dashboard", element: <Dashboard /> },
       { path: "*", element: <NotFound /> },
     ],
   },

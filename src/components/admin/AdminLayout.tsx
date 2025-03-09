@@ -61,6 +61,14 @@ export default function AdminLayout() {
                 Manage News
               </NavLink>
               <NavLink
+                to="/admin/casino"
+                className={({ isActive }) =>
+                  `${isActive ? 'text-primary' : 'text-muted-foreground'} hover:text-primary transition-colors`
+                }
+              >
+                Manage Casino
+              </NavLink>
+              <NavLink
                 to="/admin/sports"
                 className={({ isActive }) =>
                   `${isActive ? 'text-primary' : 'text-muted-foreground'} hover:text-primary transition-colors`

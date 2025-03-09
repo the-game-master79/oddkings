@@ -135,6 +135,7 @@ export default function Questions() {
       time: string;
       yesValue: string;
       noValue: string;
+      chancePercent: string;
     }) => {
       const { dateString, time } = data;
       const [day, month] = dateString.split('-').map(num => parseInt(num));
@@ -158,6 +159,7 @@ export default function Questions() {
           end_datetime: endDateTime.toISOString(),
           yes_value: parseInt(data.yesValue),
           no_value: parseInt(data.noValue),
+          chance_percent: parseInt(data.chancePercent),
           created_by: (await supabase.auth.getSession()).data.session?.user.id,
           status: 'active'
         })

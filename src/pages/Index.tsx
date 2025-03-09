@@ -7,7 +7,6 @@ import { Question, QuestionCategory } from "@/types/questions";
 import { Loader2, Search, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MultiTradeSidebar } from "@/components/predictions/MultiTradeSidebar";
-import { Button } from "@/components/ui/button";
 import { useTradeBuilderVisibility } from "@/hooks/useTradeBuilderVisibility";
 import { CategorySelector } from "@/components/news/CategorySelector";
 
@@ -108,15 +107,12 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col ">
       <div className="flex-1">
-        <div className="text-left mb-6 mt-3 sm:mb-8 sm:mt-4">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            Predict Wise. Win High
+        <div className="text-left mb-6 mt-3 sm:mb-8 sm:mt-4 pt-8">
+          <h2 className="text-3xl sm:text-3xl font-bold sm:mb-3 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Predict News, Win Rewards!
           </h2>
-          <p className="text-sm sm:text-lg text-muted-foreground">
-            Find your next news to win big
-          </p>
         </div>
         
         <div className="w-full sm:max-w-md mb-4">
@@ -165,6 +161,7 @@ const Index = () => {
                     yesPercentage={yesPercentage}
                     noPercentage={noPercentage}
                     volume={question.yes_value + question.no_value}
+                    chancePercent={question.chance_percent || 75} // Add this line with a default fallback
                   />
                 </div>
               );

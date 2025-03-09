@@ -10,6 +10,7 @@ export type Question = {
   status: 'active' | 'resolved_yes' | 'resolved_no';
   created_by: string;
   category_mapping?: Array<{ custom_category: string }>;
+  chance_percent: number; // Add this line
 };
 
 export type QuestionStats = {
@@ -39,6 +40,7 @@ export type QuestionFormValues = {
   time: string;
   yesValue: string;
   noValue: string;
+  chancePercent: string; // Add this line
 };
 
 export const validateQuestion = (data: Partial<QuestionFormValues>): Record<string, string> => {

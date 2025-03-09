@@ -399,10 +399,10 @@ export default function Sports() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-0.5 pt-8">
         <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Trade Sports, Win Big!</h1>
         <div className="mb-6 -mx-3 px-3 overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 overflow-x-auto pb-2 px-6 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {availableSportCategories.map((category) => (
               <Button
                 key={category.value}

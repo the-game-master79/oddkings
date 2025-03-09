@@ -53,7 +53,7 @@ export const DashboardLayout = () => {
             <Sidebar collapsed={sidebarCollapsed} />
           </div>
           <main 
-            className={`flex-1 pt-16 transition-all duration-300 flex flex-col overflow-auto
+            className={`flex-1 pt-16 pb-20 transition-all duration-300 flex flex-col overflow-auto
               ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}
             style={{
               paddingRight: isMobile ? 0 : `${tradeBuilderWidth}px`

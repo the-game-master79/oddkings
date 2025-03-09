@@ -1,5 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { QuestionCategory } from "@/types/questions";
@@ -15,6 +21,7 @@ interface PredictionCardProps {
   yesPercentage: number;
   noPercentage: number;
   volume: number;
+  chancePercent: number;  // Add this field
 }
 
 export const PredictionCard = ({ 
@@ -23,10 +30,12 @@ export const PredictionCard = ({
   category,
   yesPercentage,
   noPercentage,
-  volume 
+  volume,
+  chancePercent 
 }: PredictionCardProps) => {
   const [currentVolume, setCurrentVolume] = useState(volume);
   const [participants, setParticipants] = useState(0);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { addTrade } = useTradeBuilder();
 
   useEffect(() => {
@@ -111,27 +120,29 @@ export const PredictionCard = ({
   };
 
   return (
-    <Card className="glass-card animate-fade-in h-full flex flex-col">
-      <CardHeader className="flex-none pb-2 text-left">
-        <div className="flex items-center space-x-2">
-          <Badge 
-            variant="outline" 
-            className={`shrink-0 font-medium whitespace-nowrap ${getCategoryStyle(category)}`}
-          >
-            {category}
-          </Badge>
-          <Badge 
-            variant="outline" 
-            className="shrink-0 font-medium whitespace-nowrap text-gray-800 border-gray-300"
-          >
-            {yesPercentage + noPercentage}% Chance
-          </Badge>
-        </div>
-        <CardTitle className="text-lg leading-tight font-medium font-['Work Sans'] line-clamp-3">
-          {question}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col justify-end mt-auto pt-4">
+    <>
+      <Card className="glass-card animate-fade-in h-full flex flex-col">
+        <CardHeader className="flex-none pb-2 text-left">
+          <div className="flex items-center space-x-2">
+            <Badge 
+              variant="outline" 
+              className={`shrink-0 font-medium whitespace-nowrap ${getCategoryStyle(category)}`}
+            >
+              {category}
+            </Badge>
+            <Badge 
+              variant="outline" 
+              className="shrink-0 font-medium whitespace-nowrap text-gray-800 border-gray-300 cursor-pointer hover:bg-gray-100"
+              onClick={() => setIsDialogOpen(true)}
+            >
+              {chancePercent}% Chance
+            </Badge>
+          </div>
+          <CardTitle className="text-lg leading-tight font-medium font-['Work Sans'] line-clamp-3">
+            {question}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col justify-end mt-auto pt-4">
           <div className="grid grid-cols-2 gap-3">
             <button 
               className="flex items-center justify-center p-2.5 rounded-md transition-all duration-300 
@@ -154,7 +165,19 @@ export const PredictionCard = ({
             <span>${currentVolume.toLocaleString()} Vol.</span>
             <span>{participants.toLocaleString()} Trades</span>
           </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">{chancePercent}% Chance</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground">
+            This event has {chancePercent}% chance of occurring in the future.
+          </p>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

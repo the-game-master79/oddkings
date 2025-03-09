@@ -3,6 +3,9 @@
   --animation-duration: 3s;
   position: relative;
   padding-top: 20px; /* Add space at top for multiplier hits */
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* Board styling */
@@ -12,6 +15,8 @@
   overflow: hidden;
   transition: height 0.5s ease;
   border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
 }
 
 /* Board wrapper - remove all spacing */
@@ -29,14 +34,17 @@
 /* Canvas specific styles */
 canvas.plinko-canvas {
   display: block;
-  will-change: height;
-  transition: height 0.5s ease;
+  will-change: transform;
+  transition: all 0.3s ease;
   background: #F5F7FE;
   width: 100%;
+  height: auto;
+  aspect-ratio: 1/1;
   padding: 0;
   margin: 0;
   border: none;
   box-sizing: border-box;
+  border-radius: 8px;
 }
 
 /* Pin styling - these are drawn directly on canvas but useful for debugging */
@@ -72,6 +80,9 @@ canvas.plinko-canvas {
   z-index: 2;
   overflow: hidden;
   border: none;
+  display: flex;
+  justify-content: center;
+  margin-top: -1px;
 }
 
 .plinko-multipliers {
@@ -94,6 +105,11 @@ canvas.plinko-canvas {
   padding: 0;
   border-radius: 0;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 8px 4px;
+  font-size: clamp(0.75rem, 2vw, 1rem);
 }
 
 .multiplier-text {
@@ -124,10 +140,11 @@ canvas.plinko-canvas {
 
 /* Enhanced active state for better visibility */
 .plinko-bucket.active {
-  animation: plinko-pulse 1s ease-in-out;
+  animation: 
+    plinko-pulse 0.5s ease-out,
+    bucket-impact 0.5s ease-out !important;
   background-color: #16a34a !important;
   color: white;
-  transform: scale(1.05);
   z-index: 5;
   box-shadow: 0 0 15px rgba(22, 163, 74, 0.8);
 }
@@ -145,6 +162,33 @@ canvas.plinko-canvas {
     transform: scale(1.05);
     background-color: #16a34a;
   }
+}
+
+@keyframes bucket-bounce {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+  75% { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
+}
+
+/* Bucket animation */
+@keyframes bucket-impact {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(8px); }
+  60% { transform: translateY(-4px); }
+  80% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+
+/* Ball landing animation */
+.ball-land {
+  animation: landBounce 0.3s ease-out;
+}
+
+@keyframes landBounce {
+  0% { transform: translateY(-5px); }
+  50% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
 }
 
 /* Controls styling */
@@ -212,23 +256,28 @@ canvas.plinko-canvas {
 /* New styles for multiplier hits display */
 .multiplier-hits-container {
   display: flex;
-  background-color: rgba(30, 41, 59, 0.8);
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: rgba(17, 24, 39, 0.8);
   border-radius: 8px;
   padding: 8px;
-  gap: 8px;
-  min-height: 44px;
-  max-width: 600px;
-  justify-content: center;
-  border: 1px solid #2d3748;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .multiplier-hits-container > div {
   animation: scaleIn 0.3s ease-out;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
+  min-width: 50px;
+  text-align: center;
+  color: white;
 }
 
 .multiplier-hits-container > div:hover {
   transform: scale(1.1);
+  filter: brightness(1.2);
 }
 
 @keyframes scaleIn {
@@ -257,4 +306,47 @@ canvas.plinko-canvas {
     width: 100%;
     max-width: calc(100vw - 32px);
   }
+}
+
+/* Mobile optimizations */
+@media (max-width: 1024px) {
+  .plinko-game-container {
+    padding: 16px;
+  }
+
+  .plinko-canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .multiplier-text {
+    font-size: 0.75rem;
+  }
+
+  .plinko-controls {
+    position: static;
+    width: 100%;
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --plinko-pin-spacing: 25px;
+  }
+
+  .multiplier-text {
+    font-size: 0.65rem;
+  }
+  
+  .plinko-bucket {
+    font-size: 0.75rem;
+  }
+}
+
+/* Smooth transitions */
+.plinko-canvas,
+.plinko-controls,
+.multiplier-item {
+  transition: all 0.3s ease;
 }

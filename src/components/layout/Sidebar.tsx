@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, NavLink } from 'react-router-dom';
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
-import { Newspaper, Trophy, ChevronLeft, ChevronRight, Dice1 } from "lucide-react";
+import { Newspaper, Trophy, ChevronLeft, ChevronRight, Dice1, LayoutDashboard } from "lucide-react";
 import { 
   Collapsible, 
   CollapsibleContent
@@ -38,6 +38,11 @@ export const Sidebar = ({ collapsed }: SidebarProps) => {
   }, [isCollapsed]);
 
   const mainLinks = [
+    {
+      href: '/dashboard',
+      label: 'Dashboard',
+      icon: <LayoutDashboard size={18} />,
+    },
     {
       href: '/',
       label: 'Predict News',

@@ -99,6 +99,12 @@ interface Pin {
   y: number;
 }
 
+interface BucketAnimation {
+  index: number;
+  startTime: number;
+  duration: number;
+}
+
 const riskLevelToSlider = (risk: RiskLevel): number => {
   switch (risk) {
     case 'low': return 0;
@@ -113,6 +119,11 @@ const sliderToRiskLevel = (value: number): RiskLevel => {
   return 'high';
 };
 
+interface MultiplierHit {
+  multiplier: number;
+  timestamp: number;
+}
+
 export function Plinko() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [betAmount, setBetAmount] = useState("1");
@@ -124,6 +135,8 @@ export function Plinko() {
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('medium');
   const [activeMultiplierIndex, setActiveMultiplierIndex] = useState<number | null>(null);
   const [rowCount, setRowCount] = useState(8);
+  const [bucketAnimation, setBucketAnimation] = useState<BucketAnimation | null>(null);
+  const [multiplierHits, setMultiplierHits] = useState<MultiplierHit[]>([]);
 
   // Add new ref for tracking wins
   const pendingWinRef = useRef<{span: number, amount: number, multiplier: number} | null>(null);
@@ -198,22 +211,36 @@ export function Plinko() {
   const getBucketIndex = (x: number) => {
     // Get the last row of pins
     const lastRowPins = pinsRef.current
-      .filter(pin => pin.y === Math.max(...pinsRef.current.map(p => p.y)));
-    
-    // Sort pins from left to right
-    lastRowPins.sort((a, b) => a.x - b.x);
+      .filter(pin => pin.y === Math.max(...pinsRef.current.map(p => p.y)))
+      .sort((a, b) => a.x - b.x);
     
     // Find which span the ball is in by comparing with pin positions
+    // Now check if the ball is between bucket boundaries
     for (let i = 0; i < lastRowPins.length - 1; i++) {
       const leftPin = lastRowPins[i];
       const rightPin = lastRowPins[i + 1];
-      const middleX = (leftPin.x + rightPin.x) / 2;
+      const bucketLeftX = leftPin.x;
+      const bucketRightX = rightPin.x;
       
-      if (x < middleX) return i;
+      // If ball is within this bucket's boundaries
+      if (x >= bucketLeftX && x <= bucketRightX) {
+        return i;
+      }
     }
     
-    // If we haven't returned yet, must be in the last span
-    return lastRowPins.length - 1;
+    // Fallback for edge cases
+    if (x <= lastRowPins[0].x) return 0;
+    return lastRowPins.length - 2;
+  };
+
+  const getBucketOffset = (index: number) => {
+    if (!bucketAnimation || bucketAnimation.index !== index) return 0;
+    const elapsed = performance.now() - bucketAnimation.startTime;
+    const progress = Math.min(elapsed / bucketAnimation.duration, 1);
+    
+    // Create a bounce effect
+    const bounce = Math.sin(progress * Math.PI) * 8;
+    return bounce;
   };
 
   const drawGame = () => {
@@ -236,13 +263,13 @@ export function Plinko() {
     const bucketHeight = 40;
     const cornerRadius = 4; // Add radius for rounded corners
     const bucketMargin = 1.6; // 0.1rem = 1.6px at default scaling
-    
+     
     lastRowPins.forEach((pin, i) => {
       if (i === lastRowPins.length - 1) return;
       const nextPin = lastRowPins[i + 1];
       const bucketX = pin.x + bucketMargin;
       const bucketWidth = (nextPin.x - pin.x) - (bucketMargin * 2);
-      const bucketY = pin.y + 35;
+      const bucketY = pin.y + 35 + getBucketOffset(i); // Add offset for animation
 
       // Draw rounded rectangle for bucket
       ctx.beginPath();
@@ -269,7 +296,7 @@ export function Plinko() {
       ctx.font = `${lastRowPins.length > 12 ? '10px' : '12px'} "Work Sans", sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(
-        `${i + 1}`,  // Changed back to i + 1 for 1-based display
+        `${i}`,  // Removed + 1 here to show actual span number
         bucketX + bucketWidth / 2,
         bucketY - 4
       );
@@ -332,10 +359,31 @@ export function Plinko() {
       const { span, amount, multiplier } = pendingWinRef.current;
       setLastWin({ amount, multiplier });
       setActiveMultiplierIndex(span);
-      toast.success(`Hit span ${span + 1}: Won $${amount.toFixed(2)}! (${multiplier}X)`); // span + 1 for display
+      
+      // Add new multiplier hit
+      setMultiplierHits(prev => {
+        const newHits = [
+          { multiplier, timestamp: Date.now() },
+          ...prev.slice(0, 4) // Keep only last 4 to make room for new one
+        ];
+        return newHits;
+      });
+
+      toast.success(`Hit span ${span}: Won $${amount.toFixed(2)}! (${multiplier}X)`);
       pendingWinRef.current = null;
     }
   });
+
+  // Add animation cleanup effect
+  useEffect(() => {
+    if (bucketAnimation) {
+      const cleanup = setTimeout(() => {
+        setBucketAnimation(null);
+      }, bucketAnimation.duration);
+      
+      return () => clearTimeout(cleanup);
+    }
+  }, [bucketAnimation]);
 
   // Update updatePhysics to use pendingWinRef instead of direct state updates
   const updatePhysics = () => {
@@ -344,8 +392,8 @@ export function Plinko() {
     
     // Calculate the true bottom of the game area
     const lastPinY = Math.max(...pinsRef.current.map(pin => pin.y));
-    const multiplierLineY = lastPinY + BUCKET_HEIGHT; // Update this to use bucket height
-    const bottomY = CANVAS_HEIGHT + BALL_RADIUS * 2; // True bottom for ball removal
+    const multiplierLineY = lastPinY + BUCKET_HEIGHT - BALL_RADIUS; // Adjusted to account for ball radius
+    const bottomY = multiplierLineY + BALL_RADIUS; // Adjusted to stop at bucket
 
     ballsRef.current.forEach(ball => {
       const newBall = { ...ball };
@@ -372,8 +420,7 @@ export function Plinko() {
         }
       });
 
-      // Split the completion logic:
-      // 1. Calculate multiplier when ball reaches multiplier line
+      // Calculate multiplier and animate bucket when ball reaches multiplier line
       if (newBall.y >= multiplierLineY && !newBall.id.includes('_scored')) {
         const exactSpan = getBucketIndex(newBall.x);
         const multiplier = getMultipliers(pinsRef, rowCount, riskLevel)[exactSpan];
@@ -381,24 +428,49 @@ export function Plinko() {
         
         if (!isNaN(amount)) {
           pendingWinRef.current = {
-            span: exactSpan, // Keep this 0-based for array indexing
+            span: exactSpan,
             amount: amount * multiplier,
             multiplier
           };
+          
+          // Stop ball motion and center in bucket
+          const lastRowPins = pinsRef.current
+            .filter(pin => pin.y === lastPinY)
+            .sort((a, b) => a.x - b.x);
+          
+          const leftPin = lastRowPins[exactSpan];
+          const rightPin = lastRowPins[exactSpan + 1];
+          
+          if (leftPin && rightPin) {
+            // Center the ball in the bucket
+            newBall.x = (leftPin.x + rightPin.x) / 2;
+            newBall.y = multiplierLineY;
+            newBall.vy = 0;
+            newBall.vx = 0;
+          }
         }
         newBall.id = `${newBall.id}_scored`;
+        
+        // Add bucket animation
+        setBucketAnimation({
+          index: exactSpan,
+          startTime: performance.now(),
+          duration: 500 // 500ms animation
+        });
+
+        // Add to completed balls after centering
+        completedBalls.push(newBall);
+        return; // Skip adding to updatedBalls
       }
 
-      // 2. Only remove ball when it's completely off screen
-      if (newBall.y > bottomY) {
-        completedBalls.push(newBall);
-      } else {
+      // Only update ball position if not scored
+      if (!newBall.id.includes('_scored')) {
         updatedBalls.push(newBall);
       }
     });
 
-    ballsRef.current = updatedBalls;
-    if (updatedBalls.length === 0) {
+    ballsRef.current = [...updatedBalls, ...completedBalls];
+    if (updatedBalls.length === 0 && completedBalls.length === 0) {
       setIsPlaying(false);
     }
   };
@@ -456,9 +528,9 @@ export function Plinko() {
 
   // Update the render section
   return (
-    <div className="flex gap-4 plinko-game-container">
-      <div className="w-[240px] sticky top-[80px] self-start">
-        <Card className="p-4 space-y-4">
+    <div className="flex flex-col lg:flex-row gap-4 max-w-[1200px] mx-auto p-4">
+      <Card className="lg:w-[280px] w-full lg:sticky lg:top-[80px] lg:self-start order-2 lg:order-1">
+        <div className="p-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Bet Amount</label>
             <Input
@@ -502,17 +574,38 @@ export function Plinko() {
           >
             Drop Ball
           </Button>
-        </Card>
-      </div>
+        </div>
+      </Card>
 
-      <div className="flex-1">
-        <div className="flex flex-col items-center">
-          <div className="relative w-full">
+      <div className="flex-1 order-1 lg:order-2">
+        <div className="w-full flex flex-col items-center">
+          <div className="w-full max-w-[568px] relative">
+            {/* Add multiplier hits display */}
+            <div className="multiplier-hits-container mb-2">
+              {multiplierHits.length === 0 ? (
+                <span className="text-gray-400">No hits yet</span>
+              ) : (
+                multiplierHits.map((hit, index) => (
+                  <div
+                    key={hit.timestamp}
+                    className={cn(
+                      "px-3 py-1 rounded font-bold",
+                      hit.multiplier >= 10 ? "bg-green-600" :
+                      hit.multiplier >= 5 ? "bg-blue-600" :
+                      "bg-gray-600"
+                    )}
+                  >
+                    {hit.multiplier}x
+                  </div>
+                ))
+              )}
+            </div>
+
             <canvas 
               ref={canvasRef}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              className="plinko-canvas"
+              className="plinko-canvas w-full h-auto"
             />
           </div>
         </div>

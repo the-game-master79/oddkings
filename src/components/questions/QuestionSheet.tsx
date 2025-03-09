@@ -48,6 +48,10 @@ const formSchema = z.object({
   time: z.string().min(1, "Time is required"),
   yesValue: z.string().min(1, "Yes value is required"),
   noValue: z.string().min(1, "No value is required"),
+  chancePercent: z.string().refine((val) => {
+    const num = parseInt(val);
+    return !isNaN(num) && num > 0 && num <= 100;
+  }, "Chance must be between 1 and 100")
 });
 
 export const QuestionSheet = ({
@@ -67,6 +71,7 @@ export const QuestionSheet = ({
     time: "",
     yesValue: "",
     noValue: "",
+    chancePercent: "", // Add this line
   };
 
   const form = useForm<QuestionFormValues>({
@@ -87,6 +92,7 @@ export const QuestionSheet = ({
       form.setValue("time", format(endDate, "HH:mm"));
       form.setValue("yesValue", editingQuestion.yes_value.toString());
       form.setValue("noValue", editingQuestion.no_value.toString());
+      form.setValue("chancePercent", editingQuestion.chance_percent?.toString() || "75"); // Add this line
     } else {
       // Reset to empty values
       form.setValue("question", "");
@@ -95,6 +101,7 @@ export const QuestionSheet = ({
       form.setValue("time", "");
       form.setValue("yesValue", "");
       form.setValue("noValue", "");
+      form.setValue("chancePercent", ""); // Add this line
     }
   }, [editingQuestion, form, isOpen]);
 
@@ -253,6 +260,32 @@ export const QuestionSheet = ({
                   )}
                 />
               </div>
+              
+              {/* Chance Percent Field */}
+              <FormField
+                control={form.control}
+                name="chancePercent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Chance %</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number"
+                        min="1"
+                        max="100"
+                        {...field}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          if (!isNaN(val) && val > 0 && val <= 100) {
+                            field.onChange(e);
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               {/* Show total validation */}
               {yesNoTotal !== null && (
