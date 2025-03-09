@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from 'react-router-dom';
 import { StatsCard } from "@/components/admin/StatsCard";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,6 +15,9 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     activeQuestions: 0,
@@ -24,6 +28,15 @@ export default function Dashboard() {
     approvedDeposits: 0,
     rejectedDeposits: 0,
   });
+
+  useEffect(() => {
+    // Handle stored redirect path
+    const redirectPath = sessionStorage.getItem('redirectPath');
+    if (redirectPath) {
+      sessionStorage.removeItem('redirectPath');
+      navigate(redirectPath, { replace: true });
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -90,6 +103,16 @@ export default function Dashboard() {
       subscriptions.forEach(subscription => subscription.unsubscribe());
     };
   }, []);
+
+  // Add proper error boundary
+  if (!stats) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
+        <p className="text-muted-foreground">Loading dashboard stats...</p>
+      </div>
+    </div>;
+  }
 
   return (
     <div className="space-y-8">

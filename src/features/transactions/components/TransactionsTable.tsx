@@ -76,7 +76,7 @@ export const TransactionsTable = ({ transactions }: TransactionsTableProps) => {
     // Check for news transactions - any trade that doesn't have SPORT prefix
     if (type === 'trade_placement' || type === 'trade_payout') {
       return type === 'trade_payout'
-        ? <Badge className="bg-green-600">Sports Payout</Badge>
+        ? <Badge className="bg-green-600">News Payout</Badge>
         : <Badge className="bg-indigo-500">News Trade</Badge>;
     }
     
@@ -131,7 +131,7 @@ export const TransactionsTable = ({ transactions }: TransactionsTableProps) => {
       } else {
         question = cleanValue;
       }
-      return `Trade Payout for ${question}`;
+      return `${question}`;
     }
     
     // News Trade Placement
@@ -159,7 +159,7 @@ export const TransactionsTable = ({ transactions }: TransactionsTableProps) => {
       } else {
         question = cleanValue;
       }
-      return `Trade Payout for ${question}`;
+      return `${question}`;
     }
     
     // Handle any other formats that don't fit the above patterns

@@ -22,7 +22,7 @@ const games: GameCard[] = [
     id: 'plinko',
     title: 'Plinko',
     description: 'Drop the ball and watch it bounce for multiplied winnings!',
-    image: '/games/plinko.jpg',
+    image: 'https://oddkings-assets.s3.amazonaws.com/game-images/plinko.jpg',
     type: 'special',
     featured: true,
     minimumBet: 0.1
@@ -31,7 +31,7 @@ const games: GameCard[] = [
     id: 'mines',
     title: 'Mines',
     description: 'Find the gems and avoid the mines to win big!',
-    image: '/games/mines.jpg',
+    image: 'https://oddkings-assets.s3.amazonaws.com/game-images/mines.jpg',
     type: 'special',
     featured: true,
     minimumBet: 0.1
@@ -40,7 +40,7 @@ const games: GameCard[] = [
     id: 'crash-kings',
     title: 'Crash Kings',
     description: 'Watch the multiplier rise and cash out before it crashes!',
-    image: '/games/crash-game.jpg',
+    image: 'https://oddkings-assets.s3.amazonaws.com/game-images/crash.jpg',
     type: 'crash',
     featured: true,
     minimumBet: 1
@@ -138,18 +138,20 @@ export default function Casino() {
               }`}
               onClick={() => handleGameClick(game)}
             >
-              <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
+              <div className="relative h-48">
                 {game.featured && (
                   <Badge 
-                    className="absolute top-2 right-2 bg-primary text-white"
+                    className="absolute top-2 right-2 z-10 bg-primary text-white"
                   >
                     Featured
                   </Badge>
                 )}
-                {/* Placeholder for game image */}
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <Icon className="w-16 h-16" />
-                </div>
+                <img
+                  src={game.image}
+                  alt={game.title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
               </div>
               
               <CardHeader>

@@ -1,8 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileImage } from "@/components/profile/ProfileImage";
 import { EmailVerification } from "@/components/profile/EmailVerification";
 import { KYCVerification } from "@/components/profile/KYCVerification";
+import { ResetPasswordDialog } from "@/components/profile/ResetPasswordDialog";
 
 const Profile = () => {
   return (
@@ -15,6 +15,13 @@ const Profile = () => {
           </CardHeader>
           <CardContent className="space-y-6 text-left">
             <ProfileImage />
+            
+            {/* Password Reset Section */}
+            <div className="pt-4 border-t">
+              <h3 className="text-lg font-semibold mb-4">Reset Password</h3>
+              <ResetPasswordDialog />
+            </div>
+
             <EmailVerification />
           </CardContent>
         </Card>

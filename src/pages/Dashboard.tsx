@@ -16,6 +16,15 @@ import ReactCountryFlag from "react-country-flag";
 import { getMatchFlags } from "@/utils/matchFlags";
 import { getLiveStatus } from "../utils/sportStatus"; // Add this import
 import { cn } from "@/lib/utils"; // Add this import
+import { useState } from "react";
+
+interface CasinoGame {
+  id: string;
+  title: string;
+  path: string;
+  is_active: boolean;
+  image_url: string;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -26,8 +35,8 @@ export default function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from('questions')
-        .select('*')
-        .eq('status', 'active')  // Only get active questions
+        .select('id, question')  // Changed 'title' to 'question'
+        .eq('status', 'active')
         .limit(5)
         .order('created_at', { ascending: false });
       return data || [];
@@ -58,16 +67,18 @@ export default function Dashboard() {
     }
   });
 
-  const { data: casinoGames } = useQuery({
+  const { data: casinoGames } = useQuery<CasinoGame[]>({
     queryKey: ['active-casino-games'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('casino_games')
-        .select('*')
+        .select('id, title, path, is_active, image_url')
         .eq('is_active', true)
-        .limit(2)
+        .limit(4)
         .order('title');
-      return data || [];
+
+      if (error) throw error;
+      return data;
     }
   });
 
@@ -145,9 +156,56 @@ export default function Dashboard() {
     }
   };
 
+  // Add state for tracking loaded images
+  const [loadedImages, setLoadedImages] = useState<{ [key: string]: boolean }>({});
+
+  const handleImageLoad = (gameId: string) => {
+    setLoadedImages(prev => ({ ...prev, [gameId]: true }));
+  };
+
   return (
     <div className="container mx-auto px-0.5 pt-8">
       <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+
+      {/* Featured Casino Games Row */}
+      <div className="mb-12">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Featured Games</h2>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/casino')}>
+            View All <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+          {casinoGames?.map((game) => (
+            <div
+              key={game.id}
+              className="group cursor-pointer flex-shrink-0 snap-start"
+              onClick={() => navigate(`${game.path}`)} // Fix navigation path
+            >
+              <div className="relative w-[150px] h-[225px] overflow-hidden rounded-lg bg-muted">
+                {game.image_url ? (
+                  <img
+                    src={game.image_url}
+                    alt={game.title}
+                    className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-110 ${
+                      loadedImages[game.id] ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    loading="lazy"
+                    onLoad={() => handleImageLoad(game.id)}
+                    onError={(e) => {
+                      // Fallback for failed image loads
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement?.classList.add('bg-secondary');
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-secondary" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* News Row */}
       <div className="mb-8">
@@ -335,36 +393,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Casino Games Row */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Featured Games</h2>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/casino')}>
-            View All <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {casinoGames?.map((game) => (
-            <Card key={game.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">{game.title}</h3>
-                    <Button
-                      onClick={() => navigate(`/casino/${game.id}`)}
-                      variant="default"
-                    >
-                      Play Now <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Add MultiTradeSidebar */}
       <MultiTradeSidebar 
         isOpen={isSidebarOpen}
         isMinimized={isSidebarMinimized}

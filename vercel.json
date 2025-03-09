@@ -3,33 +3,11 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/admin/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "admin-oddkings.vercel.app"
-        }
-      ],
+      "source": "/admin/:path*",
       "destination": "/admin.html"
     },
     {
       "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "admin-oddkings.vercel.app"
-        }
-      ],
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/(.*)",
-      "missing": [
-        {
-          "type": "host",
-          "value": "admin-oddkings.vercel.app"
-        }
-      ],
       "destination": "/index.html"
     }
   ],

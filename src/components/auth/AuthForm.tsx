@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { SignInForm } from "./components/SignInForm";
 import { SignUpForm } from "./components/SignUpForm";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -61,7 +60,6 @@ export const AuthForm = () => {
   return (
     <div className="min-h-screen w-full flex flex-col justify-between bg-background p-4 sm:p-6 md:p-12">
       <div className="fixed top-4 right-4">
-        <ThemeToggle />
       </div>
       
       <div className="w-full max-w-md mx-auto self-start">

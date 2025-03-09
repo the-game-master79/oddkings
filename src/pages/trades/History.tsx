@@ -151,9 +151,9 @@ export default function History() {
       case 'pending':
         return <Badge variant="outline" className="text-yellow-600 border-yellow-400">Pending</Badge>;
       case 'completed':
-        return <Badge className="bg-green-500">Won</Badge>;
+        return <Badge className="bg-green-500">Completed</Badge>;
       case 'failed':
-        return <Badge className="bg-red-500">Lost</Badge>;
+        return <Badge className="bg-red-500">Failed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -179,7 +179,7 @@ export default function History() {
             <p className="text-sm font-medium">{trade.question}</p>
             
             <div className="flex justify-between">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Prediction:</span>
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Your Prediction:</span>
               <span className="capitalize">{trade.prediction}</span>
             </div>
             
@@ -211,7 +211,7 @@ export default function History() {
             <TableHead>Date & Time</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Question</TableHead>
-            <TableHead>Prediction</TableHead>
+            <TableHead>Your Prediction</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Payout</TableHead>
             <TableHead>Status</TableHead>

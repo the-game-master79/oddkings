@@ -20,16 +20,15 @@ import Casino from '@/pages/admin/Casino'
 import { AdminAuthProvider } from '@/context/admin/AdminAuthContext'
 import '@/index.css'
 
-// Strict domain check for admin site
+// Modify domain check to be more permissive in development
 const isAdminDomain = () => {
   const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return true;
-  }
-  return hostname === 'admin-oddkings.vercel.app';
+  const isDev = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isProd = hostname === 'admin-oddkings.vercel.app';
+  return isDev || isProd;
 };
 
-// Handle user routes redirection
+// Simplify route handling to prevent blocking refreshes
 const handleUserRoutes = () => {
   const path = window.location.pathname;
   if (!path.startsWith('/admin') && path !== '/') {
@@ -53,10 +52,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// Configure Routes
+// Configure Routes with better path handling
 const router = createBrowserRouter([
   {
-    path: '/',
+    path: "/",
     element: (
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
@@ -69,82 +68,80 @@ const router = createBrowserRouter([
     ),
     children: [
       {
-        path: '/',
-        element: <Navigate to="/admin/dashboard" replace />
+        path: "/",
+        element: <Navigate to="/admin/dashboard" replace />,
       },
       {
-        path: '/admin/auth',
-        element: <AdminLogin />
+        path: "admin/auth",
+        element: <AdminLogin />,
       },
       {
-        path: '/admin',
+        path: "admin/*",
         element: <AdminLayout />,
         children: [
-          { 
-            path: 'dashboard',
-            element: <Dashboard /> 
-          },
-          { 
-            path: 'questions',
-            element: <Questions /> 
-          },
-          { 
-            path: 'resolved-questions',
-            element: <ResolvedQuestions /> 
-          },
-          { 
-            path: 'resolved-questions/:id',
-            element: <ResolvedQuestionStats /> 
-          },
-          { 
-            path: 'deposits',
-            element: <Deposits /> 
-          },
-          { 
-            path: 'deposit-methods',
-            element: <ManageDepositMethods /> 
-          },
-          { 
-            path: 'users',
-            element: <Users /> 
-          },
-          { 
-            path: 'withdrawals',
-            element: <Withdrawals /> 
-          },
-          { 
-            path: 'promotions',
-            element: <Promotions /> 
-          },
-          { 
-            path: 'sports',
-            element: <Sports /> 
-          },
-          { 
-            path: 'casino',
-            element: <Casino /> 
+          {
+            path: "dashboard",
+            element: <Dashboard />,
           },
           {
-            path: '*',
-            element: <Navigate to="/admin/dashboard" replace />
+            path: 'questions',
+            element: <Questions />
+          },
+          {
+            path: 'users',
+            element: <Users />
+          },
+          {
+            path: 'deposits',
+            element: <Deposits />
+          },
+          {
+            path: 'deposit-methods',
+            element: <ManageDepositMethods />
+          },
+          {
+            path: 'withdrawals',
+            element: <Withdrawals />
+          },
+          {
+            path: 'sports',
+            element: <Sports />
+          },
+          {
+            path: 'casino',
+            element: <Casino />
           }
-        ]
+        ],
       },
       {
-        path: '*',
-        element: <Navigate to="/admin/dashboard" replace />
-      }
-    ]
-  }
-]);
+        path: "*",
+        element: <Navigate to="/admin/dashboard" replace />,
+      },
+    ],
+  },
+], {
+  basename: '/' // Ensure proper base path
+});
 
-// Only render if we're on the correct domain and not a user route
-const container = document.getElementById('root');
-if (container && isAdminDomain() && handleUserRoutes()) {
+// Initialize app with proper error boundaries
+const initializeApp = () => {
+  if (!isAdminDomain() || !handleUserRoutes()) {
+    return;
+  }
+
+  const container = document.getElementById('root');
+  if (!container) {
+    console.error('Root element not found');
+    return;
+  }
+
   const root = ReactDOM.createRoot(container);
   root.render(
     <React.StrictMode>
       <RouterProvider router={router} />
     </React.StrictMode>
   );
-}
+};
+
+// Call initialization
+initializeApp();
