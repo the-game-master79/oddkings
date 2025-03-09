@@ -17,6 +17,7 @@ import { TradeBuilderProvider } from "@/context/TradeBuilderContext";
 import TradeBuilderPage from "@/pages/trade-builder/Index";
 import Casino from "@/pages/casino/Index";
 import { Plinko } from "@/pages/casino/games/Plinko";
+import Mines from "@/pages/casino/games/mines";
 import { AdminGuard } from '@/components/auth/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout'
 import { Toaster } from "sonner";
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Casino /> },
           { path: "plinko", element: <Plinko /> },
+          { path: "mines", element: <Mines /> },
         ],
       },
       { path: "transactions", element: <Transactions /> },

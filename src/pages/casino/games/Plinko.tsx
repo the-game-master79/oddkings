@@ -125,15 +125,13 @@ export function Plinko() {
   const [activeMultiplierIndex, setActiveMultiplierIndex] = useState<number | null>(null);
   const [rowCount, setRowCount] = useState(8);
 
-  // Replace handleRiskLevelChange with slider handler
+  // Add new ref for tracking wins
+  const pendingWinRef = useRef<{span: number, amount: number, multiplier: number} | null>(null);
+
+  // Update handleRiskLevelChange to properly handle state updates
   const handleRiskLevelChange = useCallback((value: number[]) => {
     const newRisk = sliderToRiskLevel(value[0]);
     setRiskLevel(newRisk);
-    requestAnimationFrame(() => {
-      if (pinsRef.current?.length) {
-        drawGame();
-      }
-    });
   }, []);
 
   // Replace handleRowCountChange with slider handler
@@ -185,8 +183,10 @@ export function Plinko() {
     });
 
     pinsRef.current = pins;
-    drawGame();
-  }, [rowCount, riskLevel]); // Add riskLevel as dependency
+    requestAnimationFrame(() => {
+      drawGame();
+    });
+  }, [rowCount, riskLevel]); // Both rowCount and riskLevel will trigger pin recalculation
 
   // Add effect to handle risk level changes
   useEffect(() => {
@@ -264,6 +264,16 @@ export function Plinko() {
       }
       ctx.fill();
 
+      // Draw span number
+      ctx.fillStyle = '#6b7280';
+      ctx.font = `${lastRowPins.length > 12 ? '10px' : '12px'} "Work Sans", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        `${i + 1}`,  // Changed back to i + 1 for 1-based display
+        bucketX + bucketWidth / 2,
+        bucketY - 4
+      );
+
       // Draw multiplier text
       const currentMultipliers = MULTIPLIER_VALUES[riskLevel][rowCount];
       ctx.fillStyle = '#ffffff';
@@ -298,6 +308,36 @@ export function Plinko() {
     });
   };
 
+  // Move animation logic to useEffect
+  useEffect(() => {
+    if (isPlaying) {
+      const animate = () => {
+        updatePhysics();
+        drawGame();
+        animationRef.current = requestAnimationFrame(animate);
+      };
+      animationRef.current = requestAnimationFrame(animate);
+
+      return () => {
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+      };
+    }
+  }, [isPlaying]);
+
+  // Handle pending wins in a separate effect
+  useEffect(() => {
+    if (pendingWinRef.current) {
+      const { span, amount, multiplier } = pendingWinRef.current;
+      setLastWin({ amount, multiplier });
+      setActiveMultiplierIndex(span);
+      toast.success(`Hit span ${span + 1}: Won $${amount.toFixed(2)}! (${multiplier}X)`); // span + 1 for display
+      pendingWinRef.current = null;
+    }
+  });
+
+  // Update updatePhysics to use pendingWinRef instead of direct state updates
   const updatePhysics = () => {
     const updatedBalls: Ball[] = [];
     const completedBalls: Ball[] = [];
@@ -340,9 +380,11 @@ export function Plinko() {
         const amount = parseFloat(betAmount);
         
         if (!isNaN(amount)) {
-          setLastWin({ amount: amount * multiplier, multiplier });
-          setActiveMultiplierIndex(exactSpan); // Update active multiplier index
-          toast.success(`Hit span ${exactSpan + 1}: Won $${(amount * multiplier).toFixed(2)}! (${multiplier}X)`);
+          pendingWinRef.current = {
+            span: exactSpan, // Keep this 0-based for array indexing
+            amount: amount * multiplier,
+            multiplier
+          };
         }
         newBall.id = `${newBall.id}_scored`;
       }
@@ -361,12 +403,6 @@ export function Plinko() {
     }
   };
 
-  const gameLoop = () => {
-    updatePhysics();
-    drawGame();
-    animationRef.current = requestAnimationFrame(gameLoop);
-  };
-
   const dropBall = () => {
     if (isNaN(parseFloat(betAmount)) || parseFloat(betAmount) <= 0) {
       toast.error("Please enter a valid bet amount");
@@ -383,9 +419,6 @@ export function Plinko() {
     };
     
     ballsRef.current.push(newBall);
-    if (!animationRef.current) {
-      animationRef.current = requestAnimationFrame(gameLoop);
-    }
   };
 
   // Add this helper function to calculate multiplier widths
