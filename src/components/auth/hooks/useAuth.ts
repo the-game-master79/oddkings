@@ -299,7 +299,7 @@ export const useAuth = () => {
       }
 
       toast.success("Successfully logged in!");
-      navigate("/");
+      navigate("/dashboard"); // Change from "/" to "/dashboard"
       return { success: true };
     } catch (error: any) {
       console.error("Login error:", error);

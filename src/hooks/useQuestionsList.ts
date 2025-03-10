@@ -31,19 +31,18 @@ const getActiveQuestions = async () => {
 export function useQuestionsList(isAuthenticated: boolean | null) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<QuestionCategory | 'all'>('all');
-  const initialFetchDone = useRef(false);
 
   const { data: activeQuestions = [], isLoading, isError } = useQuery({
     queryKey: ['questions'],
     queryFn: getActiveQuestions,
-    enabled: isAuthenticated === true && !initialFetchDone.current,
-    staleTime: 60 * 1000, // Data fresh for 1 minute
-    cacheTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnWindowFocus: false,
-    refetchInterval: 60 * 1000, // Refetch every minute instead of 30 seconds
-    onSuccess: () => {
-      initialFetchDone.current = true;
-    }
+    enabled: isAuthenticated === true, // Remove the initialFetchDone condition
+    staleTime: 30 * 1000, // Reduce stale time to 30 seconds
+    cacheTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true, // Enable refetch on window focus
+    refetchOnReconnect: true, // Enable refetch on reconnect
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    retry: 3, // Add retry logic
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 
   const filteredQuestions = useMemo(() => {

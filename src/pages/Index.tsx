@@ -45,14 +45,13 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Memoize category selector props
+  // Simplify memoized props to only include what's needed
   const categorySelectorProps = useMemo(() => ({
     selectedCategory,
-    onCategoryChange: handleCategoryChange,
-    questions: activeQuestions
-  }), [selectedCategory, handleCategoryChange, activeQuestions]);
+    onCategoryChange: handleCategoryChange
+  }), [selectedCategory, handleCategoryChange]);
 
-  if (isAuthenticated === null || isLoading) {
+  if (isAuthenticated === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -64,14 +63,7 @@ const Index = () => {
     return <AuthForm />;
   }
 
-  if (isError) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-red-500">
-        Error loading questions. Please refresh the page.
-      </div>
-    );
-  }
-
+  // Move loading state inside the authenticated view
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1">
@@ -96,7 +88,15 @@ const Index = () => {
 
         <CategorySelector {...categorySelectorProps} />
 
-        {filteredQuestions.length > 0 ? (
+        {isLoading ? (
+          <div className="flex min-h-[40vh] items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : isError ? (
+          <div className="flex min-h-[40vh] items-center justify-center text-red-500">
+            Error loading questions. Please try refreshing the page.
+          </div>
+        ) : filteredQuestions.length > 0 ? (
           <div className="grid gap-3 
             grid-cols-1 
             sm:grid-cols-2 

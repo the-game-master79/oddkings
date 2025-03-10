@@ -8,14 +8,18 @@ import { memo, useCallback, useMemo } from "react";
 interface CategorySelectorProps {
   selectedCategory: QuestionCategory | 'all';
   onCategoryChange: (category: QuestionCategory | 'all') => void;
-  questions: Array<{ category: string; }>;
+}
+
+interface Category {
+  label: string;
+  value: string;
 }
 
 export const CategorySelector = memo(({ 
   selectedCategory, 
   onCategoryChange
 }: CategorySelectorProps) => {
-  const { data: categories = [], isLoading } = useNewsCategories();
+  const { data: categories = [] as Category[], isLoading } = useNewsCategories();
 
   const categoryButtons = useMemo(() => (
     <div className="flex gap-2 min-w-min">
@@ -27,7 +31,7 @@ export const CategorySelector = memo(({
       >
         All Categories
       </Button>
-      {categories.map((category) => (
+      {(categories as Category[]).map((category) => (
         <Button
           key={category.value}
           variant={selectedCategory === category.value ? 'default' : 'ghost'}
@@ -50,7 +54,7 @@ export const CategorySelector = memo(({
     );
   }
 
-  if (categories.length === 0) {
+  if ((categories as Category[]).length === 0) {
     return (
       <Alert variant="default" className="bg-muted/50">
         <AlertCircle className="h-4 w-4" />
