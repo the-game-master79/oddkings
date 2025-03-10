@@ -10,27 +10,21 @@ export function useNewsCategories() {
   return useQuery<Category[]>({
     queryKey: ['news-categories'],
     queryFn: async () => {
-      // Fetch categories from question_category_mapping with active questions
+      // Fetch categories from question_categories table
       const { data, error } = await supabase
-        .from('question_category_mapping')
-        .select(`
-          custom_category,
-          questions!inner(status)
-        `)
-        .eq('questions.status', 'active');
+        .from('question_categories')
+        .select('*')
+        .order('name', { ascending: true });
 
       if (error) throw error;
 
-      // Get unique categories and transform to expected format
-      const uniqueCategories = Array.from(new Set(
-        data.map(item => item.custom_category)
-      )).sort();
-
-      return uniqueCategories.map(category => ({
-        label: category,
-        value: category
+      // Transform to expected format
+      return data.map(category => ({
+        label: category.name,
+        value: category.name
       }));
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }

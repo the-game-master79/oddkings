@@ -10,12 +10,20 @@ interface CategorySelectorProps {
   questions: Array<{ category: string; status: string }>;
 }
 
-export function CategorySelector({ 
-  selectedCategory, 
-  onCategoryChange, 
-  questions 
-}: CategorySelectorProps) {
+export function CategorySelector({ selectedCategory, onCategoryChange, questions }: CategorySelectorProps) {
   const { data: categories = [], isLoading } = useNewsCategories();
+
+  // Get categories that have active questions
+  const activeCategoriesSet = new Set(
+    questions
+      .filter(q => q.status === 'active')
+      .map(q => q.category)
+  );
+
+  // Filter categories to only show ones with active questions
+  const activeCategories = categories.filter(category => 
+    activeCategoriesSet.has(category.value)
+  );
 
   if (isLoading) {
     return (
@@ -26,7 +34,7 @@ export function CategorySelector({
     );
   }
 
-  if (categories.length === 0) {
+  if (activeCategories.length === 0) {
     return (
       <Alert variant="default" className="bg-muted/50">
         <AlertCircle className="h-4 w-4" />
@@ -48,7 +56,7 @@ export function CategorySelector({
         >
           All Categories
         </Button>
-        {categories.map((category) => (
+        {activeCategories.map((category) => (
           <Button
             key={category.value}
             variant={selectedCategory === category.value ? 'default' : 'ghost'}

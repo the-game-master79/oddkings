@@ -45,7 +45,7 @@ const Index = () => {
   }, []);
 
   const { data: activeQuestions = [], isLoading, isError } = useQuery({
-    queryKey: ['questions'],
+    queryKey: ['active-questions'],
     queryFn: async () => {
       console.log("[Index] Fetching active questions");
       const { data } = await supabase.auth.getSession();
@@ -57,10 +57,7 @@ const Index = () => {
 
       const { data: questions, error } = await supabase
         .from('questions')
-        .select(`
-          *,
-          question_category_mapping!inner(custom_category)
-        `)
+        .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       
@@ -69,21 +66,16 @@ const Index = () => {
         throw error;
       }
 
-      // Transform the data to use custom_category from mapping
-      return questions.map(question => ({
-        ...question,
-        category: question.question_category_mapping?.[0]?.custom_category || question.category
-      })) as Question[];
+      console.log("[Index] Successfully fetched questions:", questions);
+      return questions as Question[];
     },
     enabled: isAuthenticated === true,
     retry: 1,
   });
 
-  // Filter questions based on category and search query
   const filteredQuestions = activeQuestions.filter(question =>
     (selectedCategory === 'all' || question.category === selectedCategory) &&
-    (question.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     question.category.toLowerCase().includes(searchQuery.toLowerCase()))
+    question.question.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isAuthenticated === null) {
@@ -146,7 +138,7 @@ const Index = () => {
           <div className="grid gap-3 
             grid-cols-1 
             sm:grid-cols-2 
-            md:grid-cols-3
+            xl:grid-cols-4 
             auto-rows-fr mb-8"
           >
             {filteredQuestions.map((question) => {
