@@ -24,6 +24,29 @@ interface PredictionCardProps {
   chancePercent: number;  // Add this field
 }
 
+// Generate consistent color based on category name
+const generateCategoryStyle = (category: string) => {
+  // Create a simple hash of the category name
+  const hash = category.split('').reduce((acc, char) => {
+    return acc + char.charCodeAt(0);
+  }, 0);
+
+  // Use the hash to select from a predefined set of color combinations
+  const colorSets = [
+    { bg: "bg-blue-500/10", text: "text-blue-700", border: "border-blue-200" },
+    { bg: "bg-purple-500/10", text: "text-purple-700", border: "border-purple-200" },
+    { bg: "bg-green-500/10", text: "text-green-700", border: "border-green-200" },
+    { bg: "bg-orange-500/10", text: "text-orange-700", border: "border-orange-200" },
+    { bg: "bg-cyan-500/10", text: "text-cyan-700", border: "border-cyan-200" },
+    { bg: "bg-indigo-500/10", text: "text-indigo-700", border: "border-indigo-200" },
+    { bg: "bg-rose-500/10", text: "text-rose-700", border: "border-rose-200" },
+    { bg: "bg-yellow-500/10", text: "text-yellow-700", border: "border-yellow-200" },
+  ];
+
+  const colorSet = colorSets[hash % colorSets.length];
+  return `${colorSet.bg} ${colorSet.text} ${colorSet.border}`;
+};
+
 export const PredictionCard = ({ 
   question, 
   id, 
@@ -36,7 +59,28 @@ export const PredictionCard = ({
   const [currentVolume, setCurrentVolume] = useState(volume);
   const [participants, setParticipants] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [actualCategory, setActualCategory] = useState(category);
   const { addTrade } = useTradeBuilder();
+
+  useEffect(() => {
+    const fetchQuestionDetails = async () => {
+      const { data, error } = await supabase
+        .from('questions')
+        .select(`
+          *,
+          question_category_mapping!inner(custom_category)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (!error && data) {
+        // Use the mapped category from question_category_mapping
+        setActualCategory(data.question_category_mapping?.[0]?.custom_category || category);
+      }
+    };
+
+    fetchQuestionDetails();
+  }, [id, category]);
 
   useEffect(() => {
     const generateMockData = async () => {
@@ -104,21 +148,6 @@ export const PredictionCard = ({
     toast.success(`Added ${option.toUpperCase()} prediction to trade builder`);
   };
 
-  // Add category color mapping
-  const getCategoryStyle = (category: QuestionCategory) => {
-    const styles = {
-      Politics: "bg-blue-500/10 text-blue-700 border-blue-200",
-      News: "bg-purple-500/10 text-purple-700 border-purple-200",
-      India: "bg-orange-500/10 text-orange-700 border-orange-200",
-      USA: "bg-red-500/10 text-red-700 border-red-200",
-      Crypto: "bg-green-500/10 text-green-700 border-green-200",
-      Space: "bg-indigo-500/10 text-indigo-700 border-indigo-200",
-      Technology: "bg-cyan-500/10 text-cyan-700 border-cyan-200",
-      Others: "bg-gray-500/10 text-gray-700 border-gray-200"
-    };
-    return styles[category] || styles.Others;
-  };
-
   return (
     <>
       <Card className="glass-card animate-fade-in h-full flex flex-col">
@@ -126,9 +155,9 @@ export const PredictionCard = ({
           <div className="flex items-center space-x-2">
             <Badge 
               variant="outline" 
-              className={`shrink-0 font-medium whitespace-nowrap ${getCategoryStyle(category)}`}
+              className={`shrink-0 font-medium whitespace-nowrap ${generateCategoryStyle(actualCategory)}`}
             >
-              {category}
+              {actualCategory}
             </Badge>
             <Badge 
               variant="outline" 

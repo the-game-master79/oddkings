@@ -24,10 +24,9 @@ export default function AdminLayout() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      console.log('Redirecting to auth - Not authenticated');
       navigate('/admin/auth', { 
         replace: true,
-        state: { from: location.pathname }
+        state: { from: location.pathname !== '/admin/auth' ? location.pathname : '/admin/dashboard' }
       });
     }
   }, [isLoading, isAuthenticated, navigate, location.pathname]);
@@ -54,14 +53,7 @@ export default function AdminLayout() {
   }, []); // Run only once on mount
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading admin panel...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {

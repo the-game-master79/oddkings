@@ -67,70 +67,45 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // Check auth state on mount and listen for changes
+  // Update session check for admin context
   useEffect(() => {
-    // Initial session check
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: userData } = await supabase
-            .from('user_statistics')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
+        if (!session) {
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
 
-          if (userData?.role === 'admin') {
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              is_admin: true,
-            });
-          }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile?.role === 'admin') {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            is_admin: true,
+          });
+        } else {
+          setUser(null);
+          await supabase.auth.signOut();
         }
       } catch (error) {
         console.error('Session check error:', error);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event);
-      setIsLoading(true);
-
-      if (session) {
-        try {
-          const { data: userData } = await supabase
-            .from('user_statistics')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-
-          if (userData?.role === 'admin') {
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              is_admin: true,
-            });
-          } else {
-            setUser(null);
-          }
-        } catch (error) {
-          console.error('Error checking admin status:', error);
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
-    });
-
     checkSession();
-    return () => {
-      subscription.unsubscribe();
-    };
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(checkSession);
+    return () => subscription.unsubscribe();
   }, []);
 
   return (

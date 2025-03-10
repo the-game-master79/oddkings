@@ -20,22 +20,15 @@ import Casino from '@/pages/admin/Casino'
 import { AdminAuthProvider } from '@/context/admin/AdminAuthContext'
 import '@/index.css'
 
-// Modify domain check to be more permissive in development
-const isAdminDomain = () => {
+// Utility to check if we're on admin domain/path
+const isAdminContext = () => {
   const hostname = window.location.hostname;
-  const isDev = hostname === 'localhost' || hostname === '127.0.0.1';
-  const isProd = hostname === 'admin-oddkings.vercel.app';
-  return isDev || isProd;
-};
-
-// Simplify route handling to prevent blocking refreshes
-const handleUserRoutes = () => {
   const path = window.location.pathname;
-  if (!path.startsWith('/admin') && path !== '/') {
-    window.location.href = `https://oddkings.vercel.app${path}`;
-    return false;
-  }
-  return true;
+  
+  // Check for admin subdomain or specific paths
+  return hostname.startsWith('admin.') || 
+         hostname === 'localhost' ||
+         path.startsWith('/admin');
 };
 
 // Configure React Query with better caching and retries
@@ -52,10 +45,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// Configure Routes with better path handling
+// Configure Routes with proper admin handling
 const router = createBrowserRouter([
   {
-    path: "/",
+    path: "*",
     element: (
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
@@ -68,20 +61,20 @@ const router = createBrowserRouter([
     ),
     children: [
       {
-        path: "/",
-        element: <Navigate to="/admin/dashboard" replace />,
-      },
-      {
         path: "admin/auth",
         element: <AdminLogin />,
       },
       {
-        path: "admin/*",
+        path: "admin",
         element: <AdminLayout />,
         children: [
           {
+            path: "",
+            element: <Navigate to="dashboard" replace />,
+          },
+          {
             path: "dashboard",
-            element: <Dashboard />,
+            element: <Dashboard />
           },
           {
             path: 'questions',
@@ -115,17 +108,16 @@ const router = createBrowserRouter([
       },
       {
         path: "*",
-        element: <Navigate to="/admin/dashboard" replace />,
+        element: <Navigate to="/admin/auth" replace />,
       },
     ],
   },
-], {
-  basename: '/' // Ensure proper base path
-});
+]);
 
-// Initialize app with proper error boundaries
+// Initialize app with proper routing checks
 const initializeApp = () => {
-  if (!isAdminDomain() || !handleUserRoutes()) {
+  if (!isAdminContext()) {
+    window.location.href = '/';
     return;
   }
 
