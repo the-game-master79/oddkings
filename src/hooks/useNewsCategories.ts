@@ -10,7 +10,6 @@ export function useNewsCategories() {
   return useQuery<Category[]>({
     queryKey: ['news-categories'],
     queryFn: async () => {
-      // Fetch categories from question_category_mapping with active questions
       const { data, error } = await supabase
         .from('question_category_mapping')
         .select(`
@@ -21,7 +20,6 @@ export function useNewsCategories() {
 
       if (error) throw error;
 
-      // Get unique categories and transform to expected format
       const uniqueCategories = Array.from(new Set(
         data.map(item => item.custom_category)
       )).sort();
@@ -31,6 +29,10 @@ export function useNewsCategories() {
         value: category
       }));
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: Infinity, // Never consider data stale automatically
+    cacheTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false
   });
 }

@@ -3,6 +3,7 @@ import { useNewsCategories } from "@/hooks/useNewsCategories";
 import { QuestionCategory } from "@/types/questions";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { memo, useCallback } from "react";
 
 interface CategorySelectorProps {
   selectedCategory: QuestionCategory | 'all';
@@ -10,12 +11,16 @@ interface CategorySelectorProps {
   questions: Array<{ category: string; status: string }>;
 }
 
-export function CategorySelector({ 
+export const CategorySelector = memo(({ 
   selectedCategory, 
   onCategoryChange, 
   questions 
-}: CategorySelectorProps) {
+}: CategorySelectorProps) => {
   const { data: categories = [], isLoading } = useNewsCategories();
+
+  const handleCategoryClick = useCallback((category: QuestionCategory | 'all') => {
+    onCategoryChange(category);
+  }, [onCategoryChange]);
 
   if (isLoading) {
     return (
@@ -43,7 +48,7 @@ export function CategorySelector({
         <Button
           variant={selectedCategory === 'all' ? 'default' : 'ghost'}
           size="sm"
-          onClick={() => onCategoryChange('all')}
+          onClick={() => handleCategoryClick('all')}
           className="min-h-[44px] shrink-0"
         >
           All Categories
@@ -53,7 +58,7 @@ export function CategorySelector({
             key={category.value}
             variant={selectedCategory === category.value ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onCategoryChange(category.value)}
+            onClick={() => handleCategoryClick(category.value)}
             className="min-h-[44px] shrink-0"
           >
             {category.label}
@@ -62,4 +67,6 @@ export function CategorySelector({
       </div>
     </div>
   );
-}
+});
+
+CategorySelector.displayName = "CategorySelector";

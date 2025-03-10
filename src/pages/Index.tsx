@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { PredictionCard } from "@/components/predictions/PredictionCard";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,10 +10,42 @@ import { MultiTradeSidebar } from "@/components/predictions/MultiTradeSidebar";
 import { useTradeBuilderVisibility } from "@/hooks/useTradeBuilderVisibility";
 import { CategorySelector } from "@/components/news/CategorySelector";
 
+const getActiveQuestions = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    throw new Error("Not authenticated");
+  }
+
+  const { data: questions, error } = await supabase
+    .from('questions')
+    .select(`
+      *,
+      question_category_mapping!inner(custom_category)
+    `)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+
+  return questions.map(question => ({
+    ...question,
+    category: question.question_category_mapping?.[0]?.custom_category || question.category,
+    chance_percent: question.chance_percent || 0 // Provide a default value for chance_percent
+  })) as Question[];
+};
+
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<QuestionCategory | 'all'>('all');
+
+  const handleCategoryChange = useCallback((category: QuestionCategory | 'all') => {
+    // Wrapping setState in setTimeout to avoid render cycle issues
+    setTimeout(() => {
+      setSelectedCategory(category);
+    }, 0);
+  }, []);
 
   const {
     isSidebarOpen,
@@ -46,45 +78,32 @@ const Index = () => {
 
   const { data: activeQuestions = [], isLoading, isError } = useQuery({
     queryKey: ['questions'],
-    queryFn: async () => {
-      console.log("[Index] Fetching active questions");
-      const { data } = await supabase.auth.getSession();
-      
-      if (!data.session) {
-        console.log("[Index] No session found during questions fetch");
-        throw new Error("Not authenticated");
-      }
-
-      const { data: questions, error } = await supabase
-        .from('questions')
-        .select(`
-          *,
-          question_category_mapping!inner(custom_category)
-        `)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error("[Index] Error fetching questions:", error);
-        throw error;
-      }
-
-      // Transform the data to use custom_category from mapping
-      return questions.map(question => ({
-        ...question,
-        category: question.question_category_mapping?.[0]?.custom_category || question.category
-      })) as Question[];
-    },
+    queryFn: getActiveQuestions,
     enabled: isAuthenticated === true,
+    staleTime: 30000, // Cache results for 30 seconds
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    refetchInterval: 30000, // Refetch every 30 seconds
     retry: 1,
+    cacheTime: 5 * 60 * 1000 // 5 minutes cache
   });
 
-  // Filter questions based on category and search query
-  const filteredQuestions = activeQuestions.filter(question =>
-    (selectedCategory === 'all' || question.category === selectedCategory) &&
-    (question.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     question.category.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Memoize filtered questions to prevent unnecessary recalculations
+  const filteredQuestions = useMemo(() => {
+    return activeQuestions.filter(question => {
+      const matchesCategory = selectedCategory === 'all' || question.category === selectedCategory;
+      const matchesSearch = searchQuery === '' || 
+        question.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        question.category.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [activeQuestions, selectedCategory, searchQuery]);
+
+  // Memoize CategorySelector props
+  const categorySelectorProps = useMemo(() => ({
+    selectedCategory,
+    onCategoryChange: handleCategoryChange,
+    questions: activeQuestions
+  }), [selectedCategory, handleCategoryChange, activeQuestions]);
 
   if (isAuthenticated === null) {
     return (
@@ -136,11 +155,7 @@ const Index = () => {
           </div>
         </div>
 
-        <CategorySelector
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          questions={activeQuestions} // Pass the questions array here
-        />
+        <CategorySelector {...categorySelectorProps} />
 
         {filteredQuestions.length > 0 ? (
           <div className="grid gap-3 
