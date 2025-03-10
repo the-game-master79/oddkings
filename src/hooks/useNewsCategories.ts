@@ -20,17 +20,19 @@ export function useNewsCategories() {
 
       if (error) throw error;
 
+      // Get unique categories from active questions
       const uniqueCategories = Array.from(new Set(
         data.map(item => item.custom_category)
       )).sort();
 
+      // Transform to expected format
       return uniqueCategories.map(category => ({
         label: category,
         value: category
       }));
     },
-    staleTime: Infinity, // Never consider data stale automatically
-    cacheTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    cacheTime: 30 * 60 * 1000, // Cache for 30 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false
