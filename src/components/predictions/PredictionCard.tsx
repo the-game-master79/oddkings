@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState, useCallback, useRef, memo, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { QuestionCategory } from "@/types/questions";
 import { useTradeBuilder } from "@/context/TradeBuilderContext";
@@ -47,7 +47,7 @@ const generateCategoryStyle = (category: string) => {
   return `${colorSet.bg} ${colorSet.text} ${colorSet.border}`;
 };
 
-export const PredictionCard = memo(({ 
+export const PredictionCard = ({ 
   question, 
   id, 
   category,
@@ -57,65 +57,86 @@ export const PredictionCard = memo(({
   chancePercent 
 }: PredictionCardProps) => {
   const [currentVolume, setCurrentVolume] = useState(volume);
-  const [participants, setParticipants] = useState(() => Math.floor(volume * 0.7));
+  const [participants, setParticipants] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [actualCategory, setActualCategory] = useState(category);
   const { addTrade } = useTradeBuilder();
 
-  // Move mock data generation to a memoized function
-  const generateMockData = useCallback(async () => {
-    // Create a hash from the id string to get consistent random-looking values
-    const hash = id.split('').reduce((acc, char) => {
-      return acc + char.charCodeAt(0);
-    }, 0);
-    
-    // Get question's end date to calculate progress factor
-    const { data: questionData } = await supabase
-      .from('questions')
-      .select('end_datetime')
-      .eq('id', id)
-      .single();
-    
-    let progressFactor = 0.5; // Default middle value if we can't calculate
-    
-    if (questionData) {
-      const endTime = new Date(questionData.end_datetime).getTime();
-      const currentTime = new Date().getTime();
-      const creationTime = new Date(endTime - (7 * 24 * 60 * 60 * 1000)).getTime();
-      progressFactor = Math.min(1, Math.max(0, (currentTime - creationTime) / (endTime - creationTime)));
-    }
-    
-    // Calculate volume and participants
-    const minVolume = 75000;
-    const maxVolume = 1600000;
-    const volumeRange = maxVolume - minVolume;
-    const baseVolume = minVolume + (hash % volumeRange * 0.25);
-    const newVolume = Math.floor(baseVolume + (volumeRange * 0.75 * progressFactor));
-    
-    const minParticipants = 100;
-    const maxParticipants = 7000;
-    const participantsRange = maxParticipants - minParticipants;
-    const baseParticipants = minParticipants + (hash % participantsRange * 0.25);
-    const newParticipants = Math.floor(baseParticipants + (participantsRange * 0.75 * progressFactor));
-    
-    return { volume: newVolume, participants: newParticipants };
-  }, [id]);
+  useEffect(() => {
+    const fetchQuestionDetails = async () => {
+      const { data, error } = await supabase
+        .from('questions')
+        .select(`
+          *,
+          question_category_mapping!inner(custom_category)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (!error && data) {
+        // Use the mapped category from question_category_mapping
+        setActualCategory(data.question_category_mapping?.[0]?.custom_category || category);
+      }
+    };
+
+    fetchQuestionDetails();
+  }, [id, category]);
 
   useEffect(() => {
-    let isMounted = true;
-    
-    generateMockData().then(({ volume: newVolume, participants: newParticipants }) => {
-      if (isMounted) {
-        setCurrentVolume(newVolume);
-        setParticipants(newParticipants);
+    const generateMockData = async () => {
+      // Create a hash from the id string to get consistent random-looking values
+      const hash = id.split('').reduce((acc, char) => {
+        return acc + char.charCodeAt(0);
+      }, 0);
+      
+      // Get question's end date to calculate progress factor
+      const { data: questionData } = await supabase
+        .from('questions')
+        .select('end_datetime')
+        .eq('id', id)
+        .single();
+      
+      let progressFactor = 0.5; // Default middle value if we can't calculate
+      
+      if (questionData) {
+        const endTime = new Date(questionData.end_datetime).getTime();
+        const currentTime = new Date().getTime();
+        const creationTime = new Date(endTime - (7 * 24 * 60 * 60 * 1000)).getTime(); // Assume 7 days before end time
+        
+        // Calculate progress factor (0 to 1) based on time elapsed
+        progressFactor = Math.min(1, Math.max(0, (currentTime - creationTime) / (endTime - creationTime)));
       }
-    });
-    
-    return () => {
-      isMounted = false;
+      
+      // Min volume: $75K, Max volume: $1.6M
+      const minVolume = 75000;
+      const maxVolume = 1600000;
+      const volumeRange = maxVolume - minVolume;
+      
+      // Base volume is the minimum plus a pseudo-random component based on id hash
+      const baseVolume = minVolume + (hash % volumeRange * 0.25);
+      
+      // Adjust volume based on progress factor (gradually increases)
+      const calculatedVolume = Math.floor(baseVolume + (volumeRange * 0.75 * progressFactor));
+      
+      // Min participants: 100, Max participants: 7K
+      const minParticipants = 100;
+      const maxParticipants = 7000;
+      const participantsRange = maxParticipants - minParticipants;
+      
+      // Base participants with some randomness
+      const baseParticipants = minParticipants + (hash % participantsRange * 0.25);
+      
+      // Adjust participants based on progress factor (gradually increases)
+      const calculatedParticipants = Math.floor(baseParticipants + (participantsRange * 0.75 * progressFactor));
+      
+      setCurrentVolume(calculatedVolume);
+      setParticipants(calculatedParticipants);
     };
-  }, [generateMockData]);
 
-  const handleOptionClick = useCallback((option: "yes" | "no", e: React.MouseEvent) => {
+    generateMockData();
+  }, [id, volume]);
+
+  const handleOptionClick = (option: "yes" | "no", e: React.MouseEvent) => {
     e.stopPropagation();
     addTrade({
       questionId: id,
@@ -125,10 +146,7 @@ export const PredictionCard = memo(({
       payout: option === "yes" ? yesPercentage : noPercentage
     });
     toast.success(`Added ${option.toUpperCase()} prediction to trade builder`);
-  }, [id, question, category, yesPercentage, noPercentage, addTrade]);
-
-  // No need for useEffect or data fetching here
-  const categoryStyle = useMemo(() => generateCategoryStyle(category), [category]);
+  };
 
   return (
     <>
@@ -137,9 +155,9 @@ export const PredictionCard = memo(({
           <div className="flex items-center space-x-2">
             <Badge 
               variant="outline" 
-              className={`shrink-0 font-medium whitespace-nowrap ${categoryStyle}`}
+              className={`shrink-0 font-medium whitespace-nowrap ${generateCategoryStyle(actualCategory)}`}
             >
-              {category}
+              {actualCategory}
             </Badge>
             <Badge 
               variant="outline" 
@@ -191,16 +209,4 @@ export const PredictionCard = memo(({
       </Dialog>
     </>
   );
-}, (prevProps, nextProps) => {
-  // Deep comparison for props to prevent unnecessary re-renders
-  return (
-    prevProps.id === nextProps.id &&
-    prevProps.question === nextProps.question &&
-    prevProps.category === nextProps.category &&
-    prevProps.yesPercentage === nextProps.yesPercentage &&
-    prevProps.noPercentage === nextProps.noPercentage &&
-    prevProps.volume === nextProps.volume
-  );
-});
-
-PredictionCard.displayName = "PredictionCard";
+};

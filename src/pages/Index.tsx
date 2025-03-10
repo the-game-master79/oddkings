@@ -1,16 +1,20 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { PredictionCard } from "@/components/predictions/PredictionCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Question, QuestionCategory } from "@/types/questions";
+import { Loader2, Search, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MultiTradeSidebar } from "@/components/predictions/MultiTradeSidebar";
 import { useTradeBuilderVisibility } from "@/hooks/useTradeBuilderVisibility";
 import { CategorySelector } from "@/components/news/CategorySelector";
-import { useQuestionsList } from "@/hooks/useQuestionsList";
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<QuestionCategory | 'all'>('all');
+
   const {
     isSidebarOpen,
     isSidebarMinimized,
@@ -19,37 +23,68 @@ const Index = () => {
     handleMaximize
   } = useTradeBuilderVisibility();
 
-  const {
-    filteredQuestions,
-    searchQuery,
-    selectedCategory,
-    handleCategoryChange,
-    handleSearchChange,
-    isLoading,
-    isError,
-    activeQuestions
-  } = useQuestionsList(isAuthenticated);
-
   useEffect(() => {
-    const setupAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-    };
-
-    setupAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    console.log("[Index] Setting up auth listener");
+    
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("[Index] Initial session check:", session ? "Authenticated" : "Not authenticated");
       setIsAuthenticated(!!session);
     });
 
-    return () => subscription.unsubscribe();
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Index] Auth state changed:", event, session ? "Session exists" : "No session");
+      setIsAuthenticated(!!session);
+    });
+
+    return () => {
+      console.log("[Index] Cleaning up auth listener");
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Simplify memoized props to only include what's needed
-  const categorySelectorProps = useMemo(() => ({
-    selectedCategory,
-    onCategoryChange: handleCategoryChange
-  }), [selectedCategory, handleCategoryChange]);
+  const { data: activeQuestions = [], isLoading, isError } = useQuery({
+    queryKey: ['questions'],
+    queryFn: async () => {
+      console.log("[Index] Fetching active questions");
+      const { data } = await supabase.auth.getSession();
+      
+      if (!data.session) {
+        console.log("[Index] No session found during questions fetch");
+        throw new Error("Not authenticated");
+      }
+
+      const { data: questions, error } = await supabase
+        .from('questions')
+        .select(`
+          *,
+          question_category_mapping!inner(custom_category)
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("[Index] Error fetching questions:", error);
+        throw error;
+      }
+
+      // Transform the data to use custom_category from mapping
+      return questions.map(question => ({
+        ...question,
+        category: question.question_category_mapping?.[0]?.custom_category || question.category
+      })) as Question[];
+    },
+    enabled: isAuthenticated === true,
+    retry: 1,
+  });
+
+  // Filter questions based on category and search query
+  const filteredQuestions = activeQuestions.filter(question =>
+    (selectedCategory === 'all' || question.category === selectedCategory) &&
+    (question.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     question.category.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   if (isAuthenticated === null) {
     return (
@@ -63,16 +98,31 @@ const Index = () => {
     return <AuthForm />;
   }
 
-  // Move loading state inside the authenticated view
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-red-500">
+        Error loading questions. Please refresh the page.
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col ">
       <div className="flex-1">
         <div className="text-left mb-6 mt-3 sm:mb-8 sm:mt-4 pt-8">
           <h2 className="text-3xl sm:text-3xl font-bold sm:mb-3 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
             Predict News, Win Rewards!
           </h2>
         </div>
-
+        
         <div className="w-full sm:max-w-md mb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -80,23 +130,19 @@ const Index = () => {
               type="text"
               placeholder="Search Markets"
               value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
         </div>
 
-        <CategorySelector {...categorySelectorProps} />
+        <CategorySelector
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          questions={activeQuestions} // Pass the questions array here
+        />
 
-        {isLoading ? (
-          <div className="flex min-h-[40vh] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : isError ? (
-          <div className="flex min-h-[40vh] items-center justify-center text-red-500">
-            Error loading questions. Please try refreshing the page.
-          </div>
-        ) : filteredQuestions.length > 0 ? (
+        {filteredQuestions.length > 0 ? (
           <div className="grid gap-3 
             grid-cols-1 
             sm:grid-cols-2 
