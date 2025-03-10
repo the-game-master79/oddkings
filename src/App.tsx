@@ -23,6 +23,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import { Toaster } from "sonner";
 import "./App.css";
 import Dashboard from "./pages/Dashboard";
+import { Crash } from "@/pages/casino/games/Crash";
 
 // Create router with future flag
 const router = createBrowserRouter([
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
           { index: true, element: <Casino /> },
           { path: "plinko", element: <Plinko /> },
           { path: "mines", element: <Mines /> },
+          { path: "crash", element: <Crash /> },
         ],
       },
       { path: "transactions", element: <Transactions /> },

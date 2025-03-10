@@ -68,6 +68,12 @@ const validateTeams = (title: string) => {
   };
 };
 
+// Add this helper function at the top
+const convertLocalToUTC = (localDateTime: string): string => {
+  const date = new Date(localDateTime);
+  return date.toISOString();
+};
+
 export function MatchForm({ events, isOpen, onOpenChange, onSubmit, isLoading, editingMatch }: MatchFormProps) {
   const [teamValidation, setTeamValidation] = React.useState({
     isValid: false,
@@ -111,13 +117,13 @@ export function MatchForm({ events, isOpen, onOpenChange, onSubmit, isLoading, e
 
   const handleFormSubmit = async (values: MatchFormValues) => {
     try {
-      // Create match first
+      // Convert all times to UTC before saving
       const matchData = {
         title: values.title,
         event_id: values.event_id,
-        trade_start_time: values.trade_start_time,
-        trade_end_time: values.trade_end_time,
-        live_start_time: values.live_start_time,
+        trade_start_time: convertLocalToUTC(values.trade_start_time),
+        trade_end_time: convertLocalToUTC(values.trade_end_time),
+        live_start_time: convertLocalToUTC(values.live_start_time),
       };
 
       const { data: createdMatch, error: matchError } = await supabase

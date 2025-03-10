@@ -1,0 +1,67 @@
+.crash-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.crash-graph {
+  background: #F5F7FE;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16/9;
+}
+
+.crash-line {
+  stroke: #3b82f6;
+  stroke-width: 2;
+  fill: none;
+}
+
+.crash-area {
+  fill: #3b82f680;
+}
+
+.crash-point {
+  fill: #3b82f6;
+  r: 4;
+}
+
+.crash-multiplier {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3rem;
+  font-weight: bold;
+  color: #3b82f6;
+  transition: color 0.3s ease;
+}
+
+.crash-multiplier.crashed {
+  color: #ef4444;
+}
+
+.crash-history {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  overflow-x: auto;
+}
+
+.history-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  min-width: 60px;
+  text-align: center;
+}
+
+.history-win {
+  background: #10b981;
+  color: white;
+}
+
+.history-loss {
+  background: #ef4444;
+  color: white;
+}

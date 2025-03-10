@@ -1,10 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Gamepad2, Dice5, PlayCircle, TrendingUp, Crown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 interface GameCard {
   id: string;
@@ -15,8 +13,10 @@ interface GameCard {
   comingSoon?: boolean;
   featured?: boolean;
   minimumBet?: number;
+  path?: string;
 }
 
+// Keep the games array for reference but we won't display it
 const games: GameCard[] = [
   {
     id: 'plinko',
@@ -37,13 +37,14 @@ const games: GameCard[] = [
     minimumBet: 0.1
   },
   {
-    id: 'crash-kings',
+    id: 'crash',
     title: 'Crash Kings',
     description: 'Watch the multiplier rise and cash out before it crashes!',
-    image: 'https://oddkings-assets.s3.amazonaws.com/game-images/crash.jpg',
+    image: '/games/crash.jpg',
     type: 'crash',
     featured: true,
-    minimumBet: 1
+    minimumBet: 0.1,
+    path: '/casino/games/crash'
   },
   {
     id: 'roulette',
@@ -87,16 +88,14 @@ const games: GameCard[] = [
   }
 ];
 
-const typeIcons = {
-  slots: Gamepad2,
-  table: Dice5,
-  live: PlayCircle,
-  crash: TrendingUp,
-  special: Crown
-};
-
 export default function Casino() {
   const navigate = useNavigate();
+  const [loadedImages, setLoadedImages] = useState<{ [key: string]: boolean }>({});
+
+  const handleImageLoad = (gameId: string) => {
+    setLoadedImages(prev => ({ ...prev, [gameId]: true }));
+  };
+
   const { data: activeGames } = useQuery({
     queryKey: ["casino-games"],
     queryFn: async () => {
@@ -111,79 +110,43 @@ export default function Casino() {
     },
   });
 
-  const filteredGames = games.filter(game => 
-    activeGames?.some(activeGame => activeGame.id === game.id)
-  );
-
-  const handleGameClick = (game: GameCard) => {
-    if (game.comingSoon) return;
-    navigate(`/casino/${game.id}`);
-  };
-
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
         Casino Games
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredGames.map((game) => {
-          const Icon = typeIcons[game.type];
-          
-          return (
-            <Card 
-              key={game.id} 
-              className={`overflow-hidden transition-all duration-300 cursor-pointer ${
-                game.comingSoon ? 'opacity-75 cursor-not-allowed' : 'hover:shadow-lg hover:-translate-y-1'
-              }`}
-              onClick={() => handleGameClick(game)}
+      {/* Featured Games Row */}
+      <div className="mb-8">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+          {activeGames?.map((game) => (
+            <div
+              key={game.id}
+              className="group cursor-pointer flex-shrink-0 snap-start"
+              onClick={() => navigate(`${game.path}`)}
             >
-              <div className="relative h-48">
-                {game.featured && (
-                  <Badge 
-                    className="absolute top-2 right-2 z-10 bg-primary text-white"
-                  >
-                    Featured
-                  </Badge>
+              <div className="relative w-[150px] h-[225px] overflow-hidden rounded-lg bg-muted">
+                {game.image_url ? (
+                  <img
+                    src={game.image_url}
+                    alt={game.title}
+                    className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-110 ${
+                      loadedImages[game.id] ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    loading="lazy"
+                    onLoad={() => handleImageLoad(game.id)}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement?.classList.add('bg-secondary');
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-secondary" />
                 )}
-                <img
-                  src={game.image}
-                  alt={game.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
               </div>
-              
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{game.title}</span>
-                  {game.minimumBet && (
-                    <Badge variant="outline">
-                      Min: ${game.minimumBet}
-                    </Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {game.description}
-                </p>
-                
-                <Button 
-                  className="w-full"
-                  disabled={game.comingSoon}
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent card click when clicking button
-                    handleGameClick(game);
-                  }}
-                >
-                  {game.comingSoon ? 'Coming Soon' : 'Play Now'}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
